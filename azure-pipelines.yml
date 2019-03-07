@@ -1,0 +1,16 @@
+trigger:
+- master
+
+jobs:
+- job: Build
+  timeoutInMinutes: 180
+  pool:
+    vmImage: 'Ubuntu-16.04'
+  steps:
+  - bash: scripts/docker_build.sh
+  - task: GithubRelease@0
+    inputs:
+      gitHubConnection: 'github'
+      repositoryName: '13pgeiser/debian_stretch_XE303C12'
+      action: 'create'
+      Assets: xe303c12.zip
