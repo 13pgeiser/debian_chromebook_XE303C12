@@ -1,11 +1,7 @@
 #!/bin/bash
 set -e
 
-kernel_version=3.8.11
-kernel_release="R71-11151.B-chromeos-3.8"
-patches="0001-mwifiex-do-not-create-AP-and-P2P-interfaces-upon-dri.patch \
-0002-Fix-udl_connector-include.patch \
-0001-Commented-out-pr_debug-line.patch"
+kernel_version=5.0.0-ARCH
 
 mkdir -p exynos
 cd exynos
@@ -16,18 +12,19 @@ export CROSS_COMPILE=arm-linux-gnueabihf-
 figlet "CPUs: $(grep -c processor /proc/cpuinfo)"
 
 if [ ! -e  kernel ]; then
-	for patch_to_apply in $patches; do
-		wget https://raw.githubusercontent.com/offensive-security/kali-arm-build-scripts/master/patches/$patch_to_apply
-	done
-	git clone --depth 1 https://chromium.googlesource.com/chromiumos/third_party/kernel -b release-${kernel_release} kernel
-	cd kernel
-	for patch_to_apply in $patches; do
-		patch -p1 --no-backup-if-mismatch < ../$patch_to_apply
-	done
-	cd ..
+    wget -nv https://mirrors.edge.kernel.org/pub/linux/kernel/v5.x/linux-5.0.tar.xz
+    tar xJf linux-5.0.tar.xz
+    rm -f linux-5.0.tar.xz
+    wget -nv http://rcn-ee.net/deb/sid-armhf/v5.0.0-armv7-x2/patch-5.0-armv7-x2.diff.gz
+    gzip -d patch-5.0-armv7-x2.diff.gz
+    cd linux-5.0
+        git apply ../patch-5.0-armv7-x2.diff
+    cd ..
+        rm -f patch-5.0-armv7-x2.diff
+    mv linux-5.0 kernel
 fi
 
-cp ../configs/$kernel_release kernel/.config
+cp ../configs/$kernel_version kernel/.config
 cd kernel
 make olddefconfig
 make -j $(grep -c processor /proc/cpuinfo)
@@ -51,8 +48,8 @@ cat << __EOF__ >kernel-exynos.its
             entry = <0>;
         };
         fdt@1 {
-            description = "exynos5250-snow-rev4.dtb";
-            data = /incbin/("dts/exynos5250-snow-rev4.dtb");
+            description = "exynos5250-snow.dtb";
+            data = /incbin/("dts/exynos5250-snow.dtb");
             type = "flat_dt";
             arch = "arm";
             compression = "none";
