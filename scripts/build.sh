@@ -2,8 +2,10 @@
 set -e
 
 kernel_version=3.8.11
-kernel_release="R65-10323.B-chromeos-3.8"
-patches="0001-mwifiex-do-not-create-AP-and-P2P-interfaces-upon-dri.patch"
+kernel_release="R71-11151.B-chromeos-3.8"
+patches="0001-mwifiex-do-not-create-AP-and-P2P-interfaces-upon-dri.patch \
+0002-Fix-udl_connector-include.patch \
+0001-Commented-out-pr_debug-line.patch"
 
 mkdir -p exynos
 cd exynos
