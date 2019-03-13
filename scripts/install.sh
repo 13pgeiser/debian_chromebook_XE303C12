@@ -117,6 +117,7 @@ function format_device
 		echo "Copying archive and install script"
 		cp rootfs.tar.xz /mnt/xe303c12/root/
 		cp install.sh /mnt/xe303c12/root/
+		cp *.bin /mnt/xe303c12/root/
 	fi
 	echo "Syncing"
 	sync

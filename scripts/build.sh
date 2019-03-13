@@ -1,7 +1,9 @@
 #!/bin/bash
 set -e
 
-kernel_version=5.0.0-ARCH
+kernel_version=5.0.1
+rcn_patch=armv7-x3
+patches="0009-media-s5p-mfc-fix-incorrect-bus-assignment-in-virtua.patch"
 
 mkdir -p exynos
 cd exynos
@@ -12,19 +14,25 @@ export CROSS_COMPILE=arm-linux-gnueabihf-
 figlet "CPUs: $(grep -c processor /proc/cpuinfo)"
 
 if [ ! -e  kernel ]; then
-    wget -nv https://mirrors.edge.kernel.org/pub/linux/kernel/v5.x/linux-5.0.tar.xz
-    tar xJf linux-5.0.tar.xz
-    rm -f linux-5.0.tar.xz
-    wget -nv http://rcn-ee.net/deb/sid-armhf/v5.0.0-armv7-x2/patch-5.0-armv7-x2.diff.gz
-    gzip -d patch-5.0-armv7-x2.diff.gz
-    cd linux-5.0
-        git apply ../patch-5.0-armv7-x2.diff
+    for patch_to_apply in $patches; do
+        wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
+    done
+    wget -nv https://mirrors.edge.kernel.org/pub/linux/kernel/v5.x/linux-$kernel_version.tar.xz
+    tar xJf linux-$kernel_version.tar.xz
+    rm -f linux-$kernel_version.tar.xz
+    wget -nv http://rcn-ee.net/deb/sid-armhf/v$kernel_version-$rcn_patch/patch-$kernel_version-$rcn_patch.diff.gz
+    gzip -d patch-$kernel_version-$rcn_patch.diff.gz
+    cd linux-$kernel_version
+    git apply ../patch-$kernel_version-$rcn_patch.diff
+    for patch_to_apply in $patches; do
+        patch -p1 --no-backup-if-mismatch < ../$patch_to_apply
+    done
     cd ..
-        rm -f patch-5.0-armv7-x2.diff
-    mv linux-5.0 kernel
+    rm -f patch-$kernel_version-$rcn_patch.diff
+    mv linux-$kernel_version kernel
 fi
 
-cp ../configs/$kernel_version kernel/.config
+cp ../configs/$kernel_version-ARCH kernel/.config
 cd kernel
 make olddefconfig
 make -j $(grep -c processor /proc/cpuinfo)
