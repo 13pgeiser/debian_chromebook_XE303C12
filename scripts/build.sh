@@ -2,6 +2,7 @@
 set -e
 
 kernel_version=5.0.1
+config=$kernel_version-ARCH
 rcn_patch=armv7-x3
 patches="0009-media-s5p-mfc-fix-incorrect-bus-assignment-in-virtua.patch"
 
@@ -32,7 +33,7 @@ if [ ! -e  kernel ]; then
     mv linux-$kernel_version kernel
 fi
 
-cp ../configs/$kernel_version-ARCH kernel/.config
+cp ../configs/$config kernel/.config
 cd kernel
 make olddefconfig
 make -j $(grep -c processor /proc/cpuinfo)
@@ -107,13 +108,13 @@ mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
 update-binfmts --enable qemu-arm
 
 # Extract debian!
-qemu-debootstrap --arch=armhf stretch root http://httpredir.debian.org/debian
+qemu-debootstrap --arch=armhf buster root http://httpredir.debian.org/debian
 
 # Update Apt sources
 cat << EOF > root/etc/apt/sources.list
-deb http://httpredir.debian.org/debian stretch main non-free contrib
-deb-src http://httpredir.debian.org/debian stretch main non-free contrib
-deb http://security.debian.org/debian-security stretch/updates main contrib non-free
+deb http://httpredir.debian.org/debian buster main non-free contrib
+deb-src http://httpredir.debian.org/debian buster main non-free contrib
+deb http://security.debian.org/debian-security buster/updates main contrib non-free
 EOF
 
 # Change hostname
@@ -154,7 +155,7 @@ apt-get -y --no-install-recommends install abootimg cgpt fake-hwclock u-boot-too
 apt-get -y dist-upgrade
 apt-get -y autoremove
 apt-get clean
-depmod -a $kernel_version
+depmod -a $config
 rm -f /0
 rm -f /hs_err*
 rm -rf /root/.bash_history
@@ -225,7 +226,7 @@ cp kernel/arch/arm/boot/kernel_usb.bin xe303c12/kernel_usb.bin
 mv kernel/arch/arm/boot/kernel_emmc_ext4.bin xe303c12/kernel_emmc_ext4.bin
 mv rootfs.tar.xz xe303c12/rootfs.tar.xz
 cp ../scripts/install.sh xe303c12/install.sh
-zip -r xe303c12.zip xe303c12/
+zip -r ./xe303c12.zip xe303c12/
 
 cd .. # Out of exynos
 
