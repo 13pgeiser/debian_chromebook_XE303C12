@@ -8,6 +8,5 @@ docker cp scripts xe303c12:/scripts
 docker exec -i xe303c12 bash scripts/build.sh
 docker cp xe303c12:/exynos/xe303c12.zip ./xe303c12.zip
 find .
-file xe303c12.zip
 docker rm -f xe303c12 || true
 docker system prune -f
