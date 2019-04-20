@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-kernel_version=5.0.5
+kernel_version=5.0.7
 config=$kernel_version-ARCH
-rcn_patch=armv7-x8
+rcn_patch=armv7-x9
 patches="0009-media-s5p-mfc-fix-incorrect-bus-assignment-in-virtua.patch"
 
 mkdir -p exynos
