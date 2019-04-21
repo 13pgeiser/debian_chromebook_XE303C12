@@ -137,13 +137,20 @@ if [ "$EUID" -ne 0 ]; then
 	scan_devices
 else
 	if [ "$#" -ne 1 ]; then
-		usage
+		echo "This will install a new kernel on /dev/mmcblk0p1"
+		read -p "Are you sure? type yes to proceed: " sure
+		if [ "$sure" != "yes" ]; then
+			stop "Stopped by the user"
+		fi
+		tar xJf rootfs.tar.xz -C / lib/modules/
+		dd if=kernel_emmc_ext4.bin of=/dev/mmcblk0p1
+	else
+		check_tool cgpt
+		check_tool parted
+		check_tool blockdev
+		check_tool mkfs.ext4
+		format_device "$1"
 	fi
-	check_tool cgpt
-	check_tool parted
-	check_tool blockdev
-	check_tool mkfs.ext4
-	format_device "$1"
 fi
 
 exit
