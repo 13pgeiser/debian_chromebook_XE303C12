@@ -4,7 +4,9 @@ set -e
 kernel_version=5.0.7
 config=$kernel_version-ARCH
 rcn_patch=armv7-x9
-patches="0009-media-s5p-mfc-fix-incorrect-bus-assignment-in-virtua.patch"
+patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch
+0007-exynos4412-odroid-set-higher-minimum-buck2-regulator.patch
+0009-media-s5p-mfc-fix-incorrect-bus-assignment-in-virtua.patch"
 
 mkdir -p exynos
 cd exynos
