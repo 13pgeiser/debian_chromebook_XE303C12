@@ -33,7 +33,8 @@ RUN set -ex \
 RUN set -ex \
     && mkdir -p exynos \
     && cd exynos \
-    && wget -nv https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu-a/8.2-2018.08/gcc-arm-8.2-2018.08-x86_64-arm-linux-gnueabihf.tar.xz \
-    && tar xJf gcc-arm-8.2-2018.08-x86_64-arm-linux-gnueabihf.tar.xz \
-    && rm gcc-arm-8.2-2018.08-x86_64-arm-linux-gnueabihf.tar.xz \
-    && mv gcc-arm-8.2-2018.08-x86_64-arm-linux-gnueabihf gcc-linaro-arm-linux
+    && wget -nv https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu-a/8.3-2019.03/binrel/gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf.tar.xz \
+    && tar xJf gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf.tar.xz \
+    && rm gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf.tar.xz \
+    && mv gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf gcc-linaro-arm-linux
+
