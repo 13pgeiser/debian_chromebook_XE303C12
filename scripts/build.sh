@@ -1,12 +1,10 @@
 #!/bin/bash
 set -e
 
-kernel_version=5.0.10
+kernel_version=5.1.1
 config=$kernel_version-ARCH
-rcn_patch=armv7-x11
-patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch
-0007-exynos4412-odroid-set-higher-minimum-buck2-regulator.patch
-0009-media-s5p-mfc-fix-incorrect-bus-assignment-in-virtua.patch"
+rcn_patch=armv7-x2
+patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 
 mkdir -p exynos
 cd exynos
