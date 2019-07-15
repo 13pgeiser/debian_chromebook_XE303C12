@@ -1,6 +1,6 @@
 # vim:set ft=dockerfile:
 # Debian base.
-FROM debian:9.8-slim
+FROM debian:10.0-slim
 MAINTAINER Pascal Geiser <pgeiser@pgeiser.com>
 
 # Install qemu-static
