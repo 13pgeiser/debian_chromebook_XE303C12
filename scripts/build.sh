@@ -1,9 +1,8 @@
 #!/bin/bash
 set -e
 
-kernel_version=5.1.15
-config=$kernel_version-ARCH
-rcn_patch=armv7-x11
+kernel_version=5.2.1
+rcn_patch=http://rcn-ee.net/deb/sid-armhf/v5.2.0-armv7-x2/patch-5.2-armv7-x2.diff.gz
 patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 
 mkdir -p exynos
@@ -18,13 +17,14 @@ if [ ! -e  kernel ]; then
     for patch_to_apply in $patches; do
         wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
     done
+    wget -nv $rcn_patch
+    rcn_patch=$(basename $rcn_patch)
+    gzip -d $rcn_patch
     wget -nv https://mirrors.edge.kernel.org/pub/linux/kernel/v5.x/linux-$kernel_version.tar.xz
     tar xJf linux-$kernel_version.tar.xz
     rm -f linux-$kernel_version.tar.xz
-    wget -nv http://rcn-ee.net/deb/sid-armhf/v$kernel_version-$rcn_patch/patch-$kernel_version-$rcn_patch.diff.gz
-    gzip -d patch-$kernel_version-$rcn_patch.diff.gz
     cd linux-$kernel_version
-    git apply ../patch-$kernel_version-$rcn_patch.diff
+    git apply ../${rcn_patch%.*}
     for patch_to_apply in $patches; do
         patch -p1 --no-backup-if-mismatch < ../$patch_to_apply
     done
@@ -33,7 +33,7 @@ if [ ! -e  kernel ]; then
     mv linux-$kernel_version kernel
 fi
 
-cp ../configs/$config kernel/.config
+cp ../configs/$kernel_version kernel/.config
 cd kernel
 make olddefconfig
 make -j $(grep -c processor /proc/cpuinfo)
@@ -155,7 +155,7 @@ apt-get -y --no-install-recommends install abootimg cgpt fake-hwclock u-boot-too
 apt-get -y dist-upgrade
 apt-get -y autoremove
 apt-get clean
-depmod -a $config
+depmod -a $kernel_version
 rm -f /0
 rm -f /hs_err*
 rm -rf /root/.bash_history
