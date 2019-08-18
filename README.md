@@ -3,6 +3,40 @@
 [![Build Status](https://dev.azure.com/pgeiser/pgeiser/_apis/build/status/13pgeiser.debian_stretch_XE303C12?branchName=master)](https://dev.azure.com/pgeiser/pgeiser/_build/latest?definitionId=1&branchName=master)
 
 Work heavily based on Kali ARM scripts: https://github.com/offensive-security/kali-arm-build-scripts
+
 Kernel config taken from: https://github.com/archlinuxarm/PKGBUILDs/tree/master/core/linux-armv7
 
-Full details on https://blog.pgeiser.com/posts/2018/02/installing-debian-stretch-on-an-arm-chromebook-xe303c12/
+## Installation
+
+- Download the zip archive and unpack it.
+- Open a terminal in the depacked folder
+- plug a USB key to hold the debian installation image
+- run _./install.sh_ and select the USB key in the list.
+
+BEWARE it will erase all data on the selected disk!
+Make sure you've selected the right one.
+
+Once the key is ready, plug in the black usb connector (ie USB 2.0) of
+the chromebook and press ctrl-u (assuming you've already configured the
+developer mode). Wait for the system to boot.
+
+user: root
+passwd: toor
+
+To install on the local emmc drive, run as root (from the USB key):
+
+```
+./install.sh /dev/mmcblk0
+```
+
+This will wipe out the entire disk. You've been warned! ;-)
+
+Have fun.
+
+## Kernel upgrade
+
+The same script can be used to update the kernel and the modules on the emmc drive.
+
+- Download the zip archive and unpack it.
+- Open a terminal in the depacked folder
+- run _sudo ./install.sh_
