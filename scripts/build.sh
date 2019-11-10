@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-kernel_version=5.3.7
-rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.3.7-armv7-x13/patch-5.3.7-armv7-x13.diff.gz
+kernel_version=5.3.8
+rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.3.8-armv7-x14/patch-5.3.8-armv7-x14.diff.gz
 patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 
 mkdir -p exynos
@@ -226,6 +226,7 @@ cp kernel/arch/arm/boot/kernel_usb.bin xe303c12/kernel_usb.bin
 mv kernel/arch/arm/boot/kernel_emmc_ext4.bin xe303c12/kernel_emmc_ext4.bin
 mv rootfs.tar.xz xe303c12/rootfs.tar.xz
 cp ../scripts/install.sh xe303c12/install.sh
+cp ../scripts/setup.sh xe303c12/setup.sh
 zip -r ./xe303c12.zip xe303c12/
 
 cd .. # Out of exynos
