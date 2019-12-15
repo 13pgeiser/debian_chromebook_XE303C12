@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-kernel_version=5.3.10
-rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.3.10-armv7-x15/patch-5.3.10-armv7-x15.diff.gz
+kernel_version=5.4.3
+rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.4.3-armv7-x11/patch-5.4.3-armv7-x11.diff.gz
 patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 
 mkdir -p exynos
@@ -33,7 +33,7 @@ if [ ! -e  kernel ]; then
     mv linux-$kernel_version kernel
 fi
 
-cp ../configs/$kernel_version kernel/.config
+cp ../configs/linux_config kernel/.config
 cd kernel
 make olddefconfig
 make -j $(grep -c processor /proc/cpuinfo)
