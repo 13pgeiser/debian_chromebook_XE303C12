@@ -2,43 +2,45 @@
 set -e
 
 kernel_version=5.4.3
-rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.4.3-armv7-x11/patch-5.4.3-armv7-x11.diff.gz
+rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.4.3-armv7-x12/patch-5.4.3-armv7-x12.diff.gz
 patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 
 mkdir -p exynos
 cd exynos
-export PATH=`pwd`/gcc-linaro-arm-linux/bin:$PATH
+PATH="$(pwd)/gcc-linaro-arm-linux/bin:$PATH"
+export PATH
 export ARCH=arm
 export CROSS_COMPILE=arm-linux-gnueabihf-
 
 figlet "CPUs: $(grep -c processor /proc/cpuinfo)"
 
 if [ ! -e  kernel ]; then
-    for patch_to_apply in $patches; do
-        wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
-    done
-    wget -nv $rcn_patch
-    rcn_patch=$(basename $rcn_patch)
-    gzip -d $rcn_patch
-    wget -nv https://mirrors.edge.kernel.org/pub/linux/kernel/v5.x/linux-$kernel_version.tar.xz
-    tar xJf linux-$kernel_version.tar.xz
-    rm -f linux-$kernel_version.tar.xz
-    cd linux-$kernel_version
-    git apply ../${rcn_patch%.*}
-    for patch_to_apply in $patches; do
-        patch -p1 --no-backup-if-mismatch < ../$patch_to_apply
-    done
-    cd ..
-    rm -f patch-$kernel_version-$rcn_patch.diff
-    mv linux-$kernel_version kernel
+  for patch_to_apply in $patches; do
+    wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
+  done
+  wget -nv $rcn_patch
+  rcn_patch=$(basename $rcn_patch)
+  gzip -d "$rcn_patch"
+  wget -nv https://mirrors.edge.kernel.org/pub/linux/kernel/v5.x/linux-$kernel_version.tar.xz
+  tar xJf linux-$kernel_version.tar.xz
+  rm -f linux-$kernel_version.tar.xz
+  (
+  cd linux-$kernel_version || exit
+  git apply "../${rcn_patch%.*}"
+  for patch_to_apply in $patches; do
+    patch -p1 --no-backup-if-mismatch < ../$patch_to_apply
+  done
+  )
+  rm -f "patch-$kernel_version-$rcn_patch.diff"
+  mv linux-$kernel_version kernel
 fi
 
 cp ../configs/linux_config kernel/.config
 cd kernel
 make olddefconfig
-make -j $(grep -c processor /proc/cpuinfo)
+make -j "$(grep -c processor /proc/cpuinfo)"
 make dtbs
-make modules_install INSTALL_MOD_PATH=`pwd`/../root
+make modules_install INSTALL_MOD_PATH="$(pwd)/../root"
 cd arch/arm/boot
 cat << __EOF__ >kernel-exynos.its
 /dts-v1/;
@@ -55,7 +57,7 @@ cat << __EOF__ >kernel-exynos.its
             compression = "none";
             load = <0>;
             entry = <0>;
-        };
+          };
         fdt@1 {
             description = "exynos5250-snow.dtb";
             data = /incbin/("dts/exynos5250-snow.dtb");
@@ -64,8 +66,8 @@ cat << __EOF__ >kernel-exynos.its
             compression = "none";
             hash@1 {
                 algo = "sha1";
-            };
-        };
+              };
+          };
         fdt@2 {
             description = "exynos5250-snow-rev5.dtb";
             data = /incbin/("dts/exynos5250-snow-rev5.dtb");
@@ -74,33 +76,33 @@ cat << __EOF__ >kernel-exynos.its
             compression = "none";
             hash@1 {
                 algo = "sha1";
-            };
-        };
-    };
+              };
+          };
+      };
     configurations {
         default = "conf@1";
         conf@1{
             kernel = "kernel@1";
             fdt = "fdt@1";
-        };
+          };
         conf@2{
             kernel = "kernel@1";
             fdt = "fdt@2";
-        };
-    };
-};
+          };
+      };
+  };
 __EOF__
 mkimage -D "-I dts -O dtb -p 2048" -f kernel-exynos.its exynos-kernel
 dd if=/dev/zero of=bootloader.bin bs=512 count=1
 echo 'noinitrd console=tty0 root=PARTUUID=%U/PARTNROFF=2 rootwait rw rootfstype=ext4' > cmdline
 vbutil_kernel --arch arm --pack kernel_usb.bin --keyblock /usr/share/vboot/devkeys/kernel.keyblock \
-	--signprivate /usr/share/vboot/devkeys/kernel_data_key.vbprivk --version 1 --config cmdline \
-	--bootloader bootloader.bin --vmlinuz exynos-kernel
-echo 'noinitrd console=tty0 root=/dev/mmcblk0p3 rootwait rw rootfstype=ext4' > cmdline
-vbutil_kernel --arch arm --pack kernel_emmc_ext4.bin --keyblock /usr/share/vboot/devkeys/kernel.keyblock \
-	--signprivate /usr/share/vboot/devkeys/kernel_data_key.vbprivk --version 1 --config cmdline \
-	--bootloader bootloader.bin --vmlinuz exynos-kernel
-cd ../../../..
+  --signprivate /usr/share/vboot/devkeys/kernel_data_key.vbprivk --version 1 --config cmdline \
+  --bootloader bootloader.bin --vmlinuz exynos-kernel
+  echo 'noinitrd console=tty0 root=/dev/mmcblk0p3 rootwait rw rootfstype=ext4' > cmdline
+  vbutil_kernel --arch arm --pack kernel_emmc_ext4.bin --keyblock /usr/share/vboot/devkeys/kernel.keyblock \
+    --signprivate /usr/share/vboot/devkeys/kernel_data_key.vbprivk --version 1 --config cmdline \
+    --bootloader bootloader.bin --vmlinuz exynos-kernel
+      cd ../../../..
 
 # This script must run in a container with priviledges!
 # Make sure qemu-arm can execute transparently ARM binaries.
@@ -150,8 +152,8 @@ echo "root:toor" | chpasswd
 export DEBIAN_FRONTEND=noninteractive
 apt-get -y --no-install-recommends install abootimg cgpt fake-hwclock u-boot-tools vboot-utils vboot-kernel-utils \
         initramfs-tools parted sudo xz-utils wpasupplicant firmware-linux firmware-libertas \
-	firmware-samsung locales-all ca-certificates initramfs-tools u-boot-tools locales \
-	console-common less network-manager git laptop-mode-tools
+  firmware-samsung locales-all ca-certificates initramfs-tools u-boot-tools locales \
+  console-common less network-manager git laptop-mode-tools
 apt-get -y dist-upgrade
 apt-get -y autoremove
 apt-get clean
@@ -219,8 +221,9 @@ sed -i 's/LM_AC_CPU_GOVERNOR=ondemand/LM_AC_CPU_GOVERNOR=performance/' root/etc/
 sed -i 's/NOLM_AC_CPU_GOVERNOR=ondemand/NOLM_AC_CPU_GOVERNOR=performance/' root/etc/laptop-mode/conf.d/cpufreq.conf
 
 cd root
-tar pcJf ../rootfs.tar.xz *
-cd ..
+tar pcJf ../rootfs.tar.xz ./*
+(
+cd .. || exit
 mkdir -p xe303c12/
 cp kernel/arch/arm/boot/kernel_usb.bin xe303c12/kernel_usb.bin
 mv kernel/arch/arm/boot/kernel_emmc_ext4.bin xe303c12/kernel_emmc_ext4.bin
@@ -228,7 +231,6 @@ mv rootfs.tar.xz xe303c12/rootfs.tar.xz
 cp ../scripts/install.sh xe303c12/install.sh
 cp ../scripts/setup.sh xe303c12/setup.sh
 zip -r ./xe303c12.zip xe303c12/
-
-cd .. # Out of exynos
+)
 
 
