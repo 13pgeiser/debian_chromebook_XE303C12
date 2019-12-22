@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-kernel_version=5.4.3
-rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.4.3-armv7-x12/patch-5.4.3-armv7-x12.diff.gz
+kernel_version=5.4.5
+rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.4.5-armv7-x13/patch-5.4.5-armv7-x13.diff.gz
 patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 
 mkdir -p exynos
