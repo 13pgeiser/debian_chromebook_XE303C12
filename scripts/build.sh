@@ -151,9 +151,9 @@ apt-get update
 echo "root:toor" | chpasswd
 export DEBIAN_FRONTEND=noninteractive
 apt-get -y --no-install-recommends install abootimg cgpt fake-hwclock u-boot-tools vboot-utils vboot-kernel-utils \
-        initramfs-tools parted sudo xz-utils wpasupplicant firmware-linux firmware-libertas \
+  initramfs-tools parted sudo xz-utils wpasupplicant firmware-linux firmware-libertas \
   firmware-samsung locales-all ca-certificates initramfs-tools u-boot-tools locales \
-  console-common less network-manager git laptop-mode-tools
+  console-common less network-manager git laptop-mode-tools python3 task-ssh-server
 apt-get -y dist-upgrade
 apt-get -y autoremove
 apt-get clean
