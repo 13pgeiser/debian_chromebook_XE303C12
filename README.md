@@ -1,4 +1,4 @@
-# Debian Stretch on Samsung Chromebook (XE303C12, ARM Exynos)
+# Debian Buster on Samsung Chromebook (XE303C12, ARM Exynos)
 
 [![Build Status](https://dev.azure.com/pgeiser/pgeiser/_apis/build/status/13pgeiser.debian_stretch_XE303C12?branchName=master)](https://dev.azure.com/pgeiser/pgeiser/_build/latest?definitionId=1&branchName=master)
 
@@ -14,10 +14,10 @@ Kernel config taken from: https://github.com/archlinuxarm/PKGBUILDs/tree/master/
 - run _./install.sh_ and select the USB key in the list.
 
 BEWARE it will erase all data on the selected disk!
-Make sure you've selected the right one.
+Make sure you've selected the right one! You've been warned!
 
-Once the key is ready, plug in the black usb connector (ie USB 2.0) of
-the chromebook and press ctrl-u (assuming you've already configured the
+Once the key is ready, plug it in the black usb connector (ie USB 2.0) of
+the chromebook . Start it and press ctrl-u (assuming you've already configured the
 developer mode). Wait for the system to boot.
 
 user: root
@@ -31,12 +31,13 @@ To install on the local emmc drive, run as root (from the USB key):
 
 This will wipe out the entire disk. You've been warned! ;-)
 
-Have fun.
+Have fun!
 
 ## Kernel upgrade
 
 The same script can be used to update the kernel and the modules on the emmc drive.
 
-- Download the zip archive and unpack it.
+- Download the zip archive and unpack it from the running debian installation
 - Open a terminal in the depacked folder
 - run _sudo ./install.sh_
+
