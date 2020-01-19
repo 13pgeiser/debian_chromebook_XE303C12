@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-kernel_version=5.4.5
-rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.4.5-armv7-x13/patch-5.4.5-armv7-x13.diff.gz
+kernel_version=5.4.10
+rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.4.10-armv7-x15/patch-5.4.10-armv7-x15.diff.gz
 patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 
 mkdir -p exynos
@@ -10,7 +10,7 @@ cd exynos
 PATH="$(pwd)/gcc-linaro-arm-linux/bin:$PATH"
 export PATH
 export ARCH=arm
-export CROSS_COMPILE=arm-linux-gnueabihf-
+export CROSS_COMPILE=arm-none-linux-gnueabihf-
 
 figlet "CPUs: $(grep -c processor /proc/cpuinfo)"
 

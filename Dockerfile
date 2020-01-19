@@ -1,11 +1,12 @@
 # vim:set ft=dockerfile:
 # Debian base.
-FROM debian:10.0-slim
+FROM debian:10.2-slim
 MAINTAINER Pascal Geiser <pgeiser@pgeiser.com>
 
 # Install qemu-static
 RUN set -ex \
     && apt-get update -q2 \
+    && apt-get dist-upgrade -q2 \
     && apt-get install -q2 -y --no-install-recommends \
 	qemu-user-static \
 	debootstrap \
@@ -33,8 +34,7 @@ RUN set -ex \
 RUN set -ex \
     && mkdir -p exynos \
     && cd exynos \
-    && wget -nv https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu-a/8.3-2019.03/binrel/gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf.tar.xz \
-    && tar xJf gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf.tar.xz \
-    && rm gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf.tar.xz \
-    && mv gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf gcc-linaro-arm-linux
-
+    && wget -nv https://developer.arm.com/-/media/Files/downloads/gnu-a/9.2-2019.12/binrel/gcc-arm-9.2-2019.12-x86_64-arm-none-linux-gnueabihf.tar.xz \
+    && tar xJf gcc-arm-9.2-2019.12-x86_64-arm-none-linux-gnueabihf.tar.xz \
+    && rm gcc-arm-9.2-2019.12-x86_64-arm-none-linux-gnueabihf.tar.xz \
+    && mv gcc-arm-9.2-2019.12-x86_64-arm-none-linux-gnueabihf gcc-linaro-arm-linux
