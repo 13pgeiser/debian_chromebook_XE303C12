@@ -8,7 +8,7 @@ Kernel config taken from: https://github.com/archlinuxarm/PKGBUILDs/tree/master/
 
 ## Installation
 
-- Download the zip archive and unpack it.
+- Download the latest zip archive from the [releases page](https://github.com/13pgeiser/debian_chromebook_XE303C12/releases) and unpack it.
 - Open a terminal in the depacked folder
 - plug a USB key to hold the debian installation image
 - run _./install.sh_ and select the USB key in the list.
