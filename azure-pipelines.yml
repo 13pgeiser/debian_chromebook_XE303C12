@@ -7,6 +7,7 @@ jobs:
   pool:
     vmImage: 'Ubuntu-16.04'
   steps:
+  - bash: make check
   - bash: scripts/docker_build.sh
   - task: CopyFiles@2
     inputs:

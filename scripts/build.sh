@@ -14,25 +14,25 @@ export CROSS_COMPILE=arm-none-linux-gnueabihf-
 
 figlet "CPUs: $(grep -c processor /proc/cpuinfo)"
 
-if [ ! -e  kernel ]; then
-  for patch_to_apply in $patches; do
-    wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
-  done
-  wget -nv $rcn_patch
-  rcn_patch=$(basename $rcn_patch)
-  gzip -d "$rcn_patch"
-  wget -nv https://mirrors.edge.kernel.org/pub/linux/kernel/v5.x/linux-$kernel_version.tar.xz
-  tar xJf linux-$kernel_version.tar.xz
-  rm -f linux-$kernel_version.tar.xz
-  (
-  cd linux-$kernel_version || exit
-  git apply "../${rcn_patch%.*}"
-  for patch_to_apply in $patches; do
-    patch -p1 --no-backup-if-mismatch < ../$patch_to_apply
-  done
-  )
-  rm -f "patch-$kernel_version-$rcn_patch.diff"
-  mv linux-$kernel_version kernel
+if [ ! -e kernel ]; then
+	for patch_to_apply in $patches; do
+		wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
+	done
+	wget -nv $rcn_patch
+	rcn_patch=$(basename $rcn_patch)
+	gzip -d "$rcn_patch"
+	wget -nv https://mirrors.edge.kernel.org/pub/linux/kernel/v5.x/linux-$kernel_version.tar.xz
+	tar xJf linux-$kernel_version.tar.xz
+	rm -f linux-$kernel_version.tar.xz
+	(
+		cd linux-$kernel_version || exit
+		git apply "../${rcn_patch%.*}"
+		for patch_to_apply in $patches; do
+			patch -p1 --no-backup-if-mismatch <../$patch_to_apply
+		done
+	)
+	rm -f "patch-$kernel_version-$rcn_patch.diff"
+	mv linux-$kernel_version kernel
 fi
 
 cp ../configs/linux_config kernel/.config
@@ -42,7 +42,7 @@ make -j "$(grep -c processor /proc/cpuinfo)"
 make dtbs
 make modules_install INSTALL_MOD_PATH="$(pwd)/../root"
 cd arch/arm/boot
-cat << __EOF__ >kernel-exynos.its
+cat <<__EOF__ >kernel-exynos.its
 /dts-v1/;
 
 / {
@@ -94,36 +94,36 @@ cat << __EOF__ >kernel-exynos.its
 __EOF__
 mkimage -D "-I dts -O dtb -p 2048" -f kernel-exynos.its exynos-kernel
 dd if=/dev/zero of=bootloader.bin bs=512 count=1
-echo 'noinitrd console=tty0 root=PARTUUID=%U/PARTNROFF=2 rootwait rw rootfstype=ext4' > cmdline
+echo 'noinitrd console=tty0 root=PARTUUID=%U/PARTNROFF=2 rootwait rw rootfstype=ext4' >cmdline
 vbutil_kernel --arch arm --pack kernel_usb.bin --keyblock /usr/share/vboot/devkeys/kernel.keyblock \
-  --signprivate /usr/share/vboot/devkeys/kernel_data_key.vbprivk --version 1 --config cmdline \
-  --bootloader bootloader.bin --vmlinuz exynos-kernel
-  echo 'noinitrd console=tty0 root=/dev/mmcblk0p3 rootwait rw rootfstype=ext4' > cmdline
-  vbutil_kernel --arch arm --pack kernel_emmc_ext4.bin --keyblock /usr/share/vboot/devkeys/kernel.keyblock \
-    --signprivate /usr/share/vboot/devkeys/kernel_data_key.vbprivk --version 1 --config cmdline \
-    --bootloader bootloader.bin --vmlinuz exynos-kernel
-      cd ../../../..
+	--signprivate /usr/share/vboot/devkeys/kernel_data_key.vbprivk --version 1 --config cmdline \
+	--bootloader bootloader.bin --vmlinuz exynos-kernel
+echo 'noinitrd console=tty0 root=/dev/mmcblk0p3 rootwait rw rootfstype=ext4' >cmdline
+vbutil_kernel --arch arm --pack kernel_emmc_ext4.bin --keyblock /usr/share/vboot/devkeys/kernel.keyblock \
+	--signprivate /usr/share/vboot/devkeys/kernel_data_key.vbprivk --version 1 --config cmdline \
+	--bootloader bootloader.bin --vmlinuz exynos-kernel
+cd ../../../..
 
 # This script must run in a container with priviledges!
 # Make sure qemu-arm can execute transparently ARM binaries.
-mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc  
+mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
 update-binfmts --enable qemu-arm
 
 # Extract debian!
 qemu-debootstrap --arch=armhf buster root http://httpredir.debian.org/debian
 
 # Update Apt sources
-cat << EOF > root/etc/apt/sources.list
+cat <<EOF >root/etc/apt/sources.list
 deb http://httpredir.debian.org/debian buster main non-free contrib
 deb-src http://httpredir.debian.org/debian buster main non-free contrib
 deb http://security.debian.org/debian-security buster/updates main contrib non-free
 EOF
 
 # Change hostname
-echo "chromebook" > root/etc/hostname
+echo "chromebook" >root/etc/hostname
 
 # Add it to the hosts
-cat << EOF > root/etc/hosts
+cat <<EOF >root/etc/hosts
 127.0.0.1       chromebook    localhost
 ::1             localhost ip6-localhost ip6-loopback
 fe00::0         ip6-localnet
@@ -133,19 +133,19 @@ ff02::2         ip6-allrouters
 EOF
 
 # Add loopback interface
-cat << EOF > root/etc/network/interfaces
+cat <<EOF >root/etc/network/interfaces
 auto lo
 iface lo inet loopback
 EOF
 
 # And configure default DNS (google...)
-cat << EOF > root/etc/resolv.conf
+cat <<EOF >root/etc/resolv.conf
 nameserver 8.8.8.8
 nameserver 8.8.4.4
 EOF
 
 # Prepare third-stage
-cat << EOF > root/root/third-stage
+cat <<EOF >root/root/third-stage
 #!/bin/bash
 apt-get update
 echo "root:toor" | chpasswd
@@ -177,7 +177,7 @@ rm -f root/root/third-stage
 
 # Xorg
 mkdir -p root/etc/X11/xorg.conf.d/
-cat << EOF > root/etc/X11/xorg.conf.d/10-synaptics-chromebook.conf
+cat <<EOF >root/etc/X11/xorg.conf.d/10-synaptics-chromebook.conf
 Section "InputClass"
         Identifier          "touchpad"
         MatchIsTouchpad             "on"
@@ -192,12 +192,12 @@ EndSection
 EOF
 
 # Mali GPU rules aka mali-rules package in ChromeOS
-cat << EOF > root/etc/udev/rules.d/50-mali.rules
+cat <<EOF >root/etc/udev/rules.d/50-mali.rules
 KERNEL=="mali0", MODE="0660", GROUP="video"
 EOF
 
 # Video rules aka media-rules package in ChromeOS
-cat << EOF > root/etc/udev/rules.d/50-media.rules
+cat <<EOF >root/etc/udev/rules.d/50-media.rules
 ATTR{name}=="s5p-mfc-dec", SYMLINK+="video-dec"
 ATTR{name}=="s5p-mfc-enc", SYMLINK+="video-enc"
 ATTR{name}=="s5p-jpeg-dec", SYMLINK+="jpeg-dec"
@@ -223,14 +223,12 @@ sed -i 's/NOLM_AC_CPU_GOVERNOR=ondemand/NOLM_AC_CPU_GOVERNOR=performance/' root/
 cd root
 tar pcJf ../rootfs.tar.xz ./*
 (
-cd .. || exit
-mkdir -p xe303c12/
-cp kernel/arch/arm/boot/kernel_usb.bin xe303c12/kernel_usb.bin
-mv kernel/arch/arm/boot/kernel_emmc_ext4.bin xe303c12/kernel_emmc_ext4.bin
-mv rootfs.tar.xz xe303c12/rootfs.tar.xz
-cp ../scripts/install.sh xe303c12/install.sh
-cp ../scripts/setup.sh xe303c12/setup.sh
-zip -r ./xe303c12.zip xe303c12/
+	cd .. || exit
+	mkdir -p xe303c12/
+	cp kernel/arch/arm/boot/kernel_usb.bin xe303c12/kernel_usb.bin
+	mv kernel/arch/arm/boot/kernel_emmc_ext4.bin xe303c12/kernel_emmc_ext4.bin
+	mv rootfs.tar.xz xe303c12/rootfs.tar.xz
+	cp ../scripts/install.sh xe303c12/install.sh
+	cp ../scripts/setup.sh xe303c12/setup.sh
+	zip -r ./xe303c12.zip xe303c12/
 )
-
-
