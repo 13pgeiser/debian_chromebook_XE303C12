@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-kernel_version=5.5
+kernel_version=5.5.1
 rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.5.0-armv7-x5/patch-5.5-armv7-x5.diff.gz
 patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 
@@ -144,6 +144,24 @@ nameserver 8.8.8.8
 nameserver 8.8.4.4
 EOF
 
+# Taken as-is from https://github.com/RPi-Distro/raspberrypi-sys-mods/blob/master/debian/raspberrypi-sys-mods.regenerate_ssh_host_keys.service
+cat <<EOF >root/etc/systemd/system/regenerate_ssh_host_keys.service
+[Unit]
+Description=Regenerate SSH host keys
+Before=ssh.service
+ConditionFileIsExecutable=/usr/bin/ssh-keygen
+
+[Service]
+Type=oneshot
+ExecStartPre=-/bin/dd if=/dev/hwrng of=/dev/urandom count=1 bs=4096
+ExecStartPre=-/bin/sh -c "/bin/rm -f -v /etc/ssh/ssh_host_*_key*"
+ExecStart=/usr/bin/ssh-keygen -A -v
+ExecStartPost=/bin/systemctl disable regenerate_ssh_host_keys
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 # Prepare third-stage
 cat <<EOF >root/root/third-stage
 #!/bin/bash
@@ -162,6 +180,7 @@ rm -f /0
 rm -f /hs_err*
 rm -rf /root/.bash_history
 rm -f /usr/bin/qemu*
+systemctl enable regenerate_ssh_host_keys
 EOF
 
 # Run third-stage
@@ -229,6 +248,5 @@ tar pcJf ../rootfs.tar.xz ./*
 	mv kernel/arch/arm/boot/kernel_emmc_ext4.bin xe303c12/kernel_emmc_ext4.bin
 	mv rootfs.tar.xz xe303c12/rootfs.tar.xz
 	cp ../scripts/install.sh xe303c12/install.sh
-	cp ../scripts/setup.sh xe303c12/setup.sh
 	zip -r ./xe303c12.zip xe303c12/
 )
