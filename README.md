@@ -1,6 +1,6 @@
 # Debian Buster on Samsung Chromebook (XE303C12, ARM Exynos)
 
-[![Build Status](https://dev.azure.com/zanymuzik/debian_chromebook_XE303C12/_apis/build/status/13pgeiser.debian_chromebook_XE303C12?branchName=master)](https://dev.azure.com/zanymuzik/debian_chromebook_XE303C12/_build/latest?definitionId=8&branchName=master)
+[![Build Status](https://dev.azure.com/zanymuzik/debian_chromebook_XE303C12/_apis/build/status/zanymuzik.debian_chromebook_XE303C12?branchName=master)](https://dev.azure.com/zanymuzik/debian_chromebook_XE303C12/_build/latest?definitionId=3&branchName=master)
 
 Work heavily based on Kali ARM scripts: https://gitlab.com/kalilinux/build-scripts/kali-arm
 
