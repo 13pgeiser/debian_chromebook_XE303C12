@@ -14,7 +14,7 @@ jobs:
       targetFolder: $(Build.ArtifactStagingDirectory)
   - task: GitHubRelease@0
     inputs:
-      gitHubConnection: 'zanymuzik_azure'
+      gitHubConnection: 'zanymuzik'
       repositoryName: 'zanymuzik/debian_chromebook_XE303C12'
       action: 'create'
       assets: $(Build.ArtifactStagingDirectory)/*.zip
