@@ -1,14 +1,17 @@
 #!/bin/bash
 set -e
 
-kernel_version=5.5.1
-rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.5.1-armv7-x6/patch-5.5.1-armv7-x6.diff.gz
+kernel_version=5.4.19
+rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.4.19-armv7-x18/patch-5.4.19-armv7-x18.diff.gz
 
-kernel_version=5.4.13
-rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.4.13-armv7-x16/patch-5.4.13-armv7-x16.diff.gz
+#kernel_version=5.4.17
+#rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.4.17-armv7-x17/patch-5.4.17-armv7-x17.diff.gz
 
-kernel_version=5.4.17
-rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.4.17-armv7-x17/patch-5.4.17-armv7-x17.diff.gz
+#kernel_version=5.4.13
+#rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.4.13-armv7-x16/patch-5.4.13-armv7-x16.diff.gz
+
+#kernel_version=5.5.1
+#rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.5.1-armv7-x6/patch-5.5.1-armv7-x6.diff.gz
 
 patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 
