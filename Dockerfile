@@ -1,13 +1,17 @@
 # vim:set ft=dockerfile:
 # Debian base.
-FROM debian:10.2-slim
+FROM debian:buster
 MAINTAINER Pascal Geiser <pgeiser@pgeiser.com>
 
-# Install qemu-static
+RUN echo 'deb-src http://deb.debian.org/debian buster main' >> /etc/apt/sources.list
+RUN echo 'deb http://deb.debian.org/debian buster-backports main' >> /etc/apt/sources.list
+RUN echo 'deb-src http://deb.debian.org/debian buster-backports main' >> /etc/apt/sources.list
+
+# Install base deps
 RUN set -ex \
-    && apt-get update -q2 \
-    && apt-get dist-upgrade -q2 \
-    && apt-get install -q2 -y --no-install-recommends \
+    && apt-get update \
+    && apt-get dist-upgrade \
+    && apt-get install -y --no-install-recommends \
 	qemu-user-static \
 	debootstrap \
 	binfmt-support \
@@ -27,14 +31,28 @@ RUN set -ex \
 	kmod \
 	ncurses-dev \
 	figlet \
+	fakeroot \
+	kernel-wedge \
+	quilt \
+	dh-exec \
+	rsync \
+	python3 \
+	cpio \
     && apt-get clean \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 
-# Download compiler
 RUN set -ex \
-    && mkdir -p exynos \
-    && cd exynos \
-    && wget -nv https://developer.arm.com/-/media/Files/downloads/gnu-a/9.2-2019.12/binrel/gcc-arm-9.2-2019.12-x86_64-arm-none-linux-gnueabihf.tar.xz \
-    && tar xJf gcc-arm-9.2-2019.12-x86_64-arm-none-linux-gnueabihf.tar.xz \
-    && rm gcc-arm-9.2-2019.12-x86_64-arm-none-linux-gnueabihf.tar.xz \
-    && mv gcc-arm-9.2-2019.12-x86_64-arm-none-linux-gnueabihf gcc-linaro-arm-linux
+    && apt-get update \
+    && apt-get install -y gcc-multilib \
+    && apt-get install -y linux-source-4.19 \
+    && apt-get -t buster-backports build-dep -y linux-source-5.4 \
+    && apt-get -t buster-backports install -y linux-source-5.4 \
+    && apt-get clean \
+    && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
+
+RUN set -ex \
+    && apt-get update \
+    && apt-get install -y crossbuild-essential-armhf \
+    && apt-get clean \
+    && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
+

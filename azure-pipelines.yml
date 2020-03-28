@@ -13,9 +13,16 @@ jobs:
     inputs:
       contents: 'xe303c12.zip'
       targetFolder: $(Build.ArtifactStagingDirectory)
+  - task: CopyFiles@2
+    inputs:
+      contents: '*.deb'
+      targetFolder: $(Build.ArtifactStagingDirectory)
   - task: GitHubRelease@0
     inputs:
       gitHubConnection: '13pgeiser_azure'
       repositoryName: '13pgeiser/debian_chromebook_XE303C12'
       action: 'create'
-      assets: $(Build.ArtifactStagingDirectory)/*.zip
+      assets: |
+        $(Build.ArtifactStagingDirectory)/*.zip
+        $(Build.ArtifactStagingDirectory)/*.deb
+

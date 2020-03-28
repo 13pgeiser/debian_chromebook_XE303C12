@@ -1,30 +1,27 @@
 #!/bin/bash
+# This script must run in a container with priviledges! (chroot, bin_fmt)
 set -e
-
-kernel_version=5.4.19
-rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.4.19-armv7-x18/patch-5.4.19-armv7-x18.diff.gz
-
-#kernel_version=5.4.17
-#rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.4.17-armv7-x17/patch-5.4.17-armv7-x17.diff.gz
-
-#kernel_version=5.4.13
-#rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.4.13-armv7-x16/patch-5.4.13-armv7-x16.diff.gz
-
-#kernel_version=5.5.1
-#rcn_patch=https://rcn-ee.net/deb/sid-armhf/v5.5.1-armv7-x6/patch-5.5.1-armv7-x6.diff.gz
-
-patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
-
-mkdir -p exynos
-cd exynos
-PATH="$(pwd)/gcc-linaro-arm-linux/bin:$PATH"
-export PATH
-export ARCH=arm
-export CROSS_COMPILE=arm-none-linux-gnueabihf-
 
 figlet "CPUs: $(grep -c processor /proc/cpuinfo)"
 
-if [ ! -e kernel ]; then
+#
+option="debian_4.19"
+#option="debian_5.4"
+#option="rcn_5.4"
+install_headers=false
+
+if [ "$option" == "debian_4.19" ]; then
+	tar xJf /usr/src/linux-source-4.19.tar.xz
+	cd linux-source-4.19
+	export kernel_version=4.19.98
+elif [ "$option" == "debian_5.4" ]; then
+	tar xJf /usr/src/linux-source-5.4.tar.xz
+	cd linux-source-5.4
+	export kernel_version=5.4.19
+elif [ "$option" == "rcn_5.4" ]; then
+	kernel_version=5.4.24
+	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.4.24-armv7-x20/patch-5.4.24-armv7-x20.diff.gz
+	patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 	for patch_to_apply in $patches; do
 		wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
 	done
@@ -33,7 +30,6 @@ if [ ! -e kernel ]; then
 	gzip -d "$rcn_patch"
 	wget -nv https://mirrors.edge.kernel.org/pub/linux/kernel/v5.x/linux-$kernel_version.tar.xz
 	tar xJf linux-$kernel_version.tar.xz
-	rm -f linux-$kernel_version.tar.xz
 	(
 		cd linux-$kernel_version || exit
 		git apply "../${rcn_patch%.*}"
@@ -41,16 +37,33 @@ if [ ! -e kernel ]; then
 			patch -p1 --no-backup-if-mismatch <../$patch_to_apply
 		done
 	)
-	rm -f "patch-$kernel_version-$rcn_patch.diff"
-	mv linux-$kernel_version kernel
+	cd linux-$kernel_version
+else
+	exit 1
 fi
 
-cp ../configs/linux_config kernel/.config
-cd kernel
+export ARCH=arm
+export CROSS_COMPILE=arm-linux-gnueabihf-
+MAKEFLAGS="-j$(grep -c processor /proc/cpuinfo)"
+export MAKEFLAGS
+
+# Get TI firmwares (not mandatory)...
+mkdir -p firmware
+wget https://github.com/beagleboard/linux/blob/4.19/firmware/am335x-bone-scale-data.bin?raw=true -O firmware/am335x-bone-scale-data.bin
+wget https://github.com/beagleboard/linux/blob/4.19/firmware/am335x-evm-scale-data.bin?raw=true -O firmware/am335x-evm-scale-data.bin
+wget https://github.com/beagleboard/linux/blob/4.19/firmware/am335x-pm-firmware.bin?raw=true -O firmware/am335x-pm-firmware.bin
+wget https://github.com/beagleboard/linux/blob/4.19/firmware/am335x-pm-firmware.elf?raw=true -O firmware/am335x-pm-firmware.elf
+wget https://github.com/beagleboard/linux/blob/4.19/firmware/am43x-evm-scale-data.bin?raw=true -O firmware/am43x-evm-scale-data.bin
+
+# Copy config, apply and build kernel
+cp /configs/linux_config ./.config
 make olddefconfig
-make -j "$(grep -c processor /proc/cpuinfo)"
+make bindeb-pkg
+make -j
 make dtbs
-make modules_install INSTALL_MOD_PATH="$(pwd)/../root"
+make modules_install INSTALL_MOD_PATH="/debian_root"
+
+# Create exynos-kernel, /kernel_usb.bin, /kernel_emmc_ext4.bin
 cd arch/arm/boot
 cat <<__EOF__ >kernel-exynos.its
 /dts-v1/;
@@ -105,35 +118,34 @@ __EOF__
 mkimage -D "-I dts -O dtb -p 2048" -f kernel-exynos.its exynos-kernel
 dd if=/dev/zero of=bootloader.bin bs=512 count=1
 echo 'noinitrd console=tty0 root=PARTUUID=%U/PARTNROFF=2 rootwait rw rootfstype=ext4' >cmdline
-vbutil_kernel --arch arm --pack kernel_usb.bin --keyblock /usr/share/vboot/devkeys/kernel.keyblock \
+vbutil_kernel --arch arm --pack /kernel_usb.bin --keyblock /usr/share/vboot/devkeys/kernel.keyblock \
 	--signprivate /usr/share/vboot/devkeys/kernel_data_key.vbprivk --version 1 --config cmdline \
 	--bootloader bootloader.bin --vmlinuz exynos-kernel
 echo 'noinitrd console=tty0 root=/dev/mmcblk0p3 rootwait rw rootfstype=ext4' >cmdline
-vbutil_kernel --arch arm --pack kernel_emmc_ext4.bin --keyblock /usr/share/vboot/devkeys/kernel.keyblock \
+vbutil_kernel --arch arm --pack /kernel_emmc_ext4.bin --keyblock /usr/share/vboot/devkeys/kernel.keyblock \
 	--signprivate /usr/share/vboot/devkeys/kernel_data_key.vbprivk --version 1 --config cmdline \
 	--bootloader bootloader.bin --vmlinuz exynos-kernel
-cd ../../../..
+cd /
 
-# This script must run in a container with priviledges!
 # Make sure qemu-arm can execute transparently ARM binaries.
 mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
 update-binfmts --enable qemu-arm
 
 # Extract debian!
-qemu-debootstrap --arch=armhf buster root http://httpredir.debian.org/debian
+qemu-debootstrap --arch=armhf buster debian_root http://httpredir.debian.org/debian
 
 # Update Apt sources
-cat <<EOF >root/etc/apt/sources.list
+cat <<EOF >debian_root/etc/apt/sources.list
 deb http://httpredir.debian.org/debian buster main non-free contrib
 deb-src http://httpredir.debian.org/debian buster main non-free contrib
 deb http://security.debian.org/debian-security buster/updates main contrib non-free
 EOF
 
 # Change hostname
-echo "chromebook" >root/etc/hostname
+echo "chromebook" >debian_root/etc/hostname
 
 # Add it to the hosts
-cat <<EOF >root/etc/hosts
+cat <<EOF >debian_root/etc/hosts
 127.0.0.1       chromebook    localhost
 ::1             localhost ip6-localhost ip6-loopback
 fe00::0         ip6-localnet
@@ -143,19 +155,19 @@ ff02::2         ip6-allrouters
 EOF
 
 # Add loopback interface
-cat <<EOF >root/etc/network/interfaces
+cat <<EOF >debian_root/etc/network/interfaces
 auto lo
 iface lo inet loopback
 EOF
 
 # And configure default DNS (google...)
-cat <<EOF >root/etc/resolv.conf
+cat <<EOF >debian_root/etc/resolv.conf
 nameserver 8.8.8.8
 nameserver 8.8.4.4
 EOF
 
 # Taken as-is from https://github.com/RPi-Distro/raspberrypi-sys-mods/blob/master/debian/raspberrypi-sys-mods.regenerate_ssh_host_keys.service
-cat <<EOF >root/etc/systemd/system/regenerate_ssh_host_keys.service
+cat <<EOF >debian_root/etc/systemd/system/regenerate_ssh_host_keys.service
 [Unit]
 Description=Regenerate SSH host keys
 Before=ssh.service
@@ -172,8 +184,20 @@ ExecStartPost=/bin/systemctl disable regenerate_ssh_host_keys
 WantedBy=multi-user.target
 EOF
 
+run_in_chroot() {
+	mount -t proc proc debian_root/proc
+	mount -o bind /dev/ debian_root/dev/
+	mount -o bind /dev/pts debian_root/dev/pts
+	chmod +x debian_root/root/third-stage
+	LANG=C chroot debian_root /root/third-stage
+	umount debian_root/dev/pts
+	umount debian_root/dev/
+	umount debian_root/proc
+	rm -f debian_root/root/third-stage
+}
+
 # Prepare third-stage
-cat <<EOF >root/root/third-stage
+cat <<EOF >debian_root/root/third-stage
 #!/bin/bash
 apt-get update
 echo "root:toor" | chpasswd
@@ -182,6 +206,13 @@ apt-get -y --no-install-recommends install abootimg cgpt fake-hwclock u-boot-too
   initramfs-tools parted sudo xz-utils wpasupplicant firmware-linux firmware-libertas \
   firmware-samsung locales-all ca-certificates initramfs-tools u-boot-tools locales \
   console-common less network-manager git laptop-mode-tools python3 task-ssh-server
+# Install headers
+apt-get -y install /root/linux-headers-*.deb
+# Fixup headers
+apt-get install -y build-essential bc bison flex libssl-dev libc-dev wget
+cd /usr/src/linux-headers-*
+wget https://raw.githubusercontent.com/armbian/build/master/patch/misc/headers-debian-byteshift.patch -O - | patch -p1
+make -j scripts
 apt-get -y dist-upgrade
 apt-get -y autoremove
 apt-get clean
@@ -190,23 +221,36 @@ rm -f /0
 rm -f /hs_err*
 rm -rf /root/.bash_history
 rm -f /usr/bin/qemu*
+# Enable ssh key regeneration
 systemctl enable regenerate_ssh_host_keys
 EOF
 
 # Run third-stage
-mount -t proc proc root/proc
-mount -o bind /dev/ root/dev/
-mount -o bind /dev/pts root/dev/pts
-chmod +x root/root/third-stage
-LANG=C chroot root /root/third-stage
-umount root/dev/pts
-umount root/dev/
-umount root/proc
-rm -f root/root/third-stage
+run_in_chroot
+
+if [ "$install_headers" = true ]; then
+	cp /linux-headers-*.deb debian_root/root/
+	cat <<EOF >debian_root/root/third-stage
+#!/bin/bash
+apt-get update
+export DEBIAN_FRONTEND=noninteractive
+# Install headers
+apt-get -y install /root/linux-headers-*.deb
+# Fixup headers
+apt-get install -y build-essential bc bison flex libssl-dev libc-dev wget
+cd /usr/src/linux-headers-*
+wget https://raw.githubusercontent.com/armbian/build/master/patch/misc/headers-debian-byteshift.patch -O - | patch -p1
+make -j scripts
+apt-get -y autoremove
+apt-get clean
+EOF
+	rm -f debian_root/root/*.deb
+	run_in_chroot
+fi
 
 # Xorg
-mkdir -p root/etc/X11/xorg.conf.d/
-cat <<EOF >root/etc/X11/xorg.conf.d/10-synaptics-chromebook.conf
+mkdir -p debian_root/etc/X11/xorg.conf.d/
+cat <<EOF >debian_root/etc/X11/xorg.conf.d/10-synaptics-chromebook.conf
 Section "InputClass"
         Identifier          "touchpad"
         MatchIsTouchpad             "on"
@@ -221,12 +265,12 @@ EndSection
 EOF
 
 # Mali GPU rules aka mali-rules package in ChromeOS
-cat <<EOF >root/etc/udev/rules.d/50-mali.rules
+cat <<EOF >debian_root/etc/udev/rules.d/50-mali.rules
 KERNEL=="mali0", MODE="0660", GROUP="video"
 EOF
 
 # Video rules aka media-rules package in ChromeOS
-cat <<EOF >root/etc/udev/rules.d/50-media.rules
+cat <<EOF >debian_root/etc/udev/rules.d/50-media.rules
 ATTR{name}=="s5p-mfc-dec", SYMLINK+="video-dec"
 ATTR{name}=="s5p-mfc-enc", SYMLINK+="video-enc"
 ATTR{name}=="s5p-jpeg-dec", SYMLINK+="jpeg-dec"
@@ -245,18 +289,21 @@ EOF
 
 # Latop-mode
 # By default, it goes to powersave that reduces cpu freq to 200 Hz!
-sed -i 's/BATT_CPU_GOVERNOR=ondemand/BATT_CPU_GOVERNOR=conservative/' root/etc/laptop-mode/conf.d/cpufreq.conf
-sed -i 's/LM_AC_CPU_GOVERNOR=ondemand/LM_AC_CPU_GOVERNOR=performance/' root/etc/laptop-mode/conf.d/cpufreq.conf
-sed -i 's/NOLM_AC_CPU_GOVERNOR=ondemand/NOLM_AC_CPU_GOVERNOR=performance/' root/etc/laptop-mode/conf.d/cpufreq.conf
+sed -i 's/BATT_CPU_GOVERNOR=ondemand/BATT_CPU_GOVERNOR=conservative/' debian_root/etc/laptop-mode/conf.d/cpufreq.conf
+sed -i 's/LM_AC_CPU_GOVERNOR=ondemand/LM_AC_CPU_GOVERNOR=performance/' debian_root/etc/laptop-mode/conf.d/cpufreq.conf
+sed -i 's/NOLM_AC_CPU_GOVERNOR=ondemand/NOLM_AC_CPU_GOVERNOR=performance/' debian_root/etc/laptop-mode/conf.d/cpufreq.conf
 
-cd root
+cd /debian_root
 tar pcJf ../rootfs.tar.xz ./*
 (
 	cd .. || exit
 	mkdir -p xe303c12/
-	cp kernel/arch/arm/boot/kernel_usb.bin xe303c12/kernel_usb.bin
-	mv kernel/arch/arm/boot/kernel_emmc_ext4.bin xe303c12/kernel_emmc_ext4.bin
+	cp /kernel_usb.bin xe303c12/kernel_usb.bin
+	mv /kernel_emmc_ext4.bin xe303c12/kernel_emmc_ext4.bin
 	mv rootfs.tar.xz xe303c12/rootfs.tar.xz
 	cp ../scripts/install.sh xe303c12/install.sh
 	zip -r ./xe303c12.zip xe303c12/
+	mkdir -p debs
+	cp ./*.deb /debs/
+	ls -1 /
 )
