@@ -11,11 +11,9 @@ jobs:
   - bash: scripts/docker_build.sh
   - task: CopyFiles@2
     inputs:
-      contents: 'xe303c12.zip'
-      targetFolder: $(Build.ArtifactStagingDirectory)
-  - task: CopyFiles@2
-    inputs:
-      contents: '*.deb'
+      Contents: |
+        xe303c12.zip
+        *.deb
       targetFolder: $(Build.ArtifactStagingDirectory)
   - task: GitHubRelease@0
     inputs:
