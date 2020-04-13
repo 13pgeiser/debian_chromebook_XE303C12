@@ -10,7 +10,7 @@ RUN echo 'deb-src http://deb.debian.org/debian buster-backports main' >> /etc/ap
 # Install base deps
 RUN set -ex \
     && apt-get update \
-    && apt-get dist-upgrade \
+    && apt-get dist-upgrade -y \
     && apt-get install -y --no-install-recommends \
 	qemu-user-static \
 	debootstrap \

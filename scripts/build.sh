@@ -5,22 +5,32 @@ set -e
 figlet "CPUs: $(grep -c processor /proc/cpuinfo)"
 
 #
-option="debian_4.19"
-#option="debian_5.4"
-#option="rcn_5.4"
+release="buster"
+#release="bullseye"
+
+#
+kernel_option="debian_4.19"
+#kernel_option="debian_5.4"
+#kernel_option="rcn_5.4"
 install_headers=false
 
-if [ "$option" == "debian_4.19" ]; then
+if [ "$kernel_option" == "debian_4.19" ]; then
 	tar xJf /usr/src/linux-source-4.19.tar.xz
 	cd linux-source-4.19
 	export kernel_version=4.19.98
-elif [ "$option" == "debian_5.4" ]; then
+	wget https://patchwork.kernel.org/patch/11058237/raw/ -O ../mali_dts_1.patch
+	wget https://patchwork.kernel.org/patch/11123745/raw/ -O ../mali_dts_2.patch
+	wget https://patchwork.kernel.org/patch/11123735/raw/ -O ../mali_dts_3.patch
+	#patch -p1 --no-backup-if-mismatch <../mali_dts_1.patch
+	patch -p1 --no-backup-if-mismatch <../mali_dts_2.patch
+	patch -p1 --no-backup-if-mismatch <../mali_dts_3.patch
+elif [ "$kernel_option" == "debian_5.4" ]; then
 	tar xJf /usr/src/linux-source-5.4.tar.xz
 	cd linux-source-5.4
 	export kernel_version=5.4.19
-elif [ "$option" == "rcn_5.4" ]; then
-	kernel_version=5.4.24
-	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.4.24-armv7-x20/patch-5.4.24-armv7-x20.diff.gz
+elif [ "$kernel_option" == "rcn_5.4" ]; then
+	kernel_version=5.4.28
+	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.4.28-armv7-x21/patch-5.4.28-armv7-x21.diff.gz
 	patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 	for patch_to_apply in $patches; do
 		wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
@@ -82,8 +92,8 @@ cat <<__EOF__ >kernel-exynos.its
             entry = <0>;
           };
         fdt@1 {
-            description = "exynos5250-snow.dtb";
-            data = /incbin/("dts/exynos5250-snow.dtb");
+            description = "exynos5250-snow-rev5.dtb";
+            data = /incbin/("dts/exynos5250-snow-rev5.dtb");
             type = "flat_dt";
             arch = "arm";
             compression = "none";
@@ -92,8 +102,8 @@ cat <<__EOF__ >kernel-exynos.its
               };
           };
         fdt@2 {
-            description = "exynos5250-snow-rev5.dtb";
-            data = /incbin/("dts/exynos5250-snow-rev5.dtb");
+            description = "exynos5250-snow.dtb";
+            data = /incbin/("dts/exynos5250-snow.dtb");
             type = "flat_dt";
             arch = "arm";
             compression = "none";
@@ -132,14 +142,22 @@ mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
 update-binfmts --enable qemu-arm
 
 # Extract debian!
-qemu-debootstrap --arch=armhf buster debian_root http://httpredir.debian.org/debian
+qemu-debootstrap --arch=armhf $release debian_root http://httpredir.debian.org/debian
 
-# Update Apt sources
-cat <<EOF >debian_root/etc/apt/sources.list
+if [ "$release" == "buster" ]; then
+	# Update Apt sources
+	cat <<EOF >debian_root/etc/apt/sources.list
 deb http://httpredir.debian.org/debian buster main non-free contrib
 deb-src http://httpredir.debian.org/debian buster main non-free contrib
 deb http://security.debian.org/debian-security buster/updates main contrib non-free
 EOF
+else
+	# Update Apt sources
+	cat <<EOF >debian_root/etc/apt/sources.list
+deb http://httpredir.debian.org/debian $release main non-free contrib
+deb-src http://httpredir.debian.org/debian $release main non-free contrib
+EOF
+fi
 
 # Change hostname
 echo "chromebook" >debian_root/etc/hostname
@@ -206,13 +224,6 @@ apt-get -y --no-install-recommends install abootimg cgpt fake-hwclock u-boot-too
   initramfs-tools parted sudo xz-utils wpasupplicant firmware-linux firmware-libertas \
   firmware-samsung locales-all ca-certificates initramfs-tools u-boot-tools locales \
   console-common less network-manager git laptop-mode-tools python3 task-ssh-server
-# Install headers
-apt-get -y install /root/linux-headers-*.deb
-# Fixup headers
-apt-get install -y build-essential bc bison flex libssl-dev libc-dev wget
-cd /usr/src/linux-headers-*
-wget https://raw.githubusercontent.com/armbian/build/master/patch/misc/headers-debian-byteshift.patch -O - | patch -p1
-make -j scripts
 apt-get -y dist-upgrade
 apt-get -y autoremove
 apt-get clean
@@ -224,7 +235,6 @@ rm -f /usr/bin/qemu*
 # Enable ssh key regeneration
 systemctl enable regenerate_ssh_host_keys
 EOF
-
 # Run third-stage
 run_in_chroot
 
@@ -234,18 +244,22 @@ if [ "$install_headers" = true ]; then
 #!/bin/bash
 apt-get update
 export DEBIAN_FRONTEND=noninteractive
-# Install headers
-apt-get -y install /root/linux-headers-*.deb
+cd /root
+# Install packages
+apt-get -y --allow-downgrades install ./*.deb
 # Fixup headers
 apt-get install -y build-essential bc bison flex libssl-dev libc-dev wget
+export ARCH=arm
+MAKEFLAGS="-j$(grep -c processor /proc/cpuinfo)"
+export MAKEFLAGS
 cd /usr/src/linux-headers-*
 wget https://raw.githubusercontent.com/armbian/build/master/patch/misc/headers-debian-byteshift.patch -O - | patch -p1
 make -j scripts
 apt-get -y autoremove
 apt-get clean
 EOF
-	rm -f debian_root/root/*.deb
 	run_in_chroot
+	rm -f debian_root/root/*.deb
 fi
 
 # Xorg
