@@ -13,24 +13,19 @@ kernel_option="debian_4.19"
 #kernel_option="debian_5.4"
 #kernel_option="rcn_5.4"
 install_headers=false
+build_armsoc_xorg=true
 
 if [ "$kernel_option" == "debian_4.19" ]; then
 	tar xJf /usr/src/linux-source-4.19.tar.xz
 	cd linux-source-4.19
 	export kernel_version=4.19.98
-	wget https://patchwork.kernel.org/patch/11058237/raw/ -O ../mali_dts_1.patch
-	wget https://patchwork.kernel.org/patch/11123745/raw/ -O ../mali_dts_2.patch
-	wget https://patchwork.kernel.org/patch/11123735/raw/ -O ../mali_dts_3.patch
-	#patch -p1 --no-backup-if-mismatch <../mali_dts_1.patch
-	patch -p1 --no-backup-if-mismatch <../mali_dts_2.patch
-	patch -p1 --no-backup-if-mismatch <../mali_dts_3.patch
 elif [ "$kernel_option" == "debian_5.4" ]; then
 	tar xJf /usr/src/linux-source-5.4.tar.xz
 	cd linux-source-5.4
 	export kernel_version=5.4.19
 elif [ "$kernel_option" == "rcn_5.4" ]; then
-	kernel_version=5.4.28
-	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.4.28-armv7-x21/patch-5.4.28-armv7-x21.diff.gz
+	kernel_version=5.4.44
+	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.4.44-armv7-x29/patch-5.4.44-armv7-x29.diff.gz
 	patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 	for patch_to_apply in $patches; do
 		wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
@@ -235,9 +230,34 @@ rm -f /usr/bin/qemu*
 # Enable ssh key regeneration
 systemctl enable regenerate_ssh_host_keys
 EOF
-# Run third-stage
 run_in_chroot
 
+# XORG driver
+if [ "$build_armsoc_xorg" = true ]; then
+	cat <<EOF >debian_root/root/third-stage
+apt-get -y install xserver-xorg-dev libtool automake xutils-dev libudev-dev build-essential pkg-config git
+git clone https://github.com/paolosabatino/xf86-video-armsoc.git
+cd xf86-video-armsoc
+./autogen.sh
+./configure --enable-maintainer-mode --prefix=/usr
+make
+make install
+cd ..
+apt-get -y remove xserver-xorg-dev libtool automake xutils-dev libudev-dev build-essential pkg-config git
+apt-get -y autoremove
+EOF
+	run_in_chroot
+	mkdir -p debian_root/usr/share/X11/xorg.conf.d/
+	cat <<EOF >debian_root/usr/share/X11/xorg.conf.d/01-armsoc.conf
+Section "Device"
+	Identifier	"device"
+	Driver		"armsoc"
+	Option		"DRI2" "true"
+EndSection
+EOF
+fi
+
+# Kernel headers
 if [ "$install_headers" = true ]; then
 	cp /linux-headers-*.deb debian_root/root/
 	cat <<EOF >debian_root/root/third-stage
@@ -266,7 +286,7 @@ fi
 mkdir -p debian_root/etc/X11/xorg.conf.d/
 cat <<EOF >debian_root/etc/X11/xorg.conf.d/10-synaptics-chromebook.conf
 Section "InputClass"
-        Identifier          "touchpad"
+        Identifier          	    "touchpad"
         MatchIsTouchpad             "on"
         Driver                      "synaptics"
         Option                      "TapButton1"    "1"
@@ -316,6 +336,7 @@ tar pcJf ../rootfs.tar.xz ./*
 	mv /kernel_emmc_ext4.bin xe303c12/kernel_emmc_ext4.bin
 	mv rootfs.tar.xz xe303c12/rootfs.tar.xz
 	cp ../scripts/install.sh xe303c12/install.sh
+	cp ../scripts/xfce.sh xe303c12/xfce.sh
 	zip -r ./xe303c12.zip xe303c12/
 	mkdir -p debs
 	cp ./*.deb /debs/
