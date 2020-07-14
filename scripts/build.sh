@@ -12,20 +12,29 @@ release="buster"
 kernel_option="debian_4.19"
 #kernel_option="debian_5.4"
 #kernel_option="rcn_5.4"
-install_headers=false
-build_armsoc_xorg=true
+install_headers=true
+build_armsoc_xorg=false
+use_hexdump0815=false
+
+if [ "$use_hexdump0815" = true ]; then
+	git clone https://github.com/hexdump0815/linux-mainline-and-mali-on-samsung-snow-chromebook.git
+fi
 
 if [ "$kernel_option" == "debian_4.19" ]; then
 	tar xJf /usr/src/linux-source-4.19.tar.xz
 	cd linux-source-4.19
-	export kernel_version=4.19.98
+	if [ "$use_hexdump0815" = true ]; then
+		cp -rv ../linux-mainline-and-mali-on-samsung-snow-chromebook/misc.cbe/exynos5250-mali-complete/drivers/gpu/arm drivers/gpu
+		patch -p1 --no-backup-if-mismatch <../linux-mainline-and-mali-on-samsung-snow-chromebook/misc.cbe/exynos5250-mali-complete.patch
+		sed -i 's/totalram_pages()/totalram_pages/g' drivers/gpu/arm/midgard/mali_kbase_gpuprops.c
+	fi
 elif [ "$kernel_option" == "debian_5.4" ]; then
 	tar xJf /usr/src/linux-source-5.4.tar.xz
 	cd linux-source-5.4
 	export kernel_version=5.4.19
 elif [ "$kernel_option" == "rcn_5.4" ]; then
-	kernel_version=5.4.44
-	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.4.44-armv7-x29/patch-5.4.44-armv7-x29.diff.gz
+	kernel_version=5.4.47
+	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.4.47-armv7-x30/patch-5.4.47-armv7-x30.diff.gz
 	patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 	for patch_to_apply in $patches; do
 		wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
@@ -41,11 +50,20 @@ elif [ "$kernel_option" == "rcn_5.4" ]; then
 		for patch_to_apply in $patches; do
 			patch -p1 --no-backup-if-mismatch <../$patch_to_apply
 		done
+		if [ "$use_hexdump0815" = true ]; then
+			cp -rv ../linux-mainline-and-mali-on-samsung-snow-chromebook/misc.cbe/exynos5250-mali-complete/drivers/gpu/arm drivers/gpu
+			patch -p1 --no-backup-if-mismatch <../linux-mainline-and-mali-on-samsung-snow-chromebook/misc.cbe/exynos5250-mali-complete.patch
+			patch -p1 --no-backup-if-mismatch <../linux-mainline-and-mali-on-samsung-snow-chromebook/misc.cbe/disable-panfrost-gpu-node-v5.4.patch
+		fi
 	)
 	cd linux-$kernel_version
 else
 	exit 1
 fi
+
+kernel_version="$(make kernelversion)"
+export kernel_version
+figlet "KERNEL: $kernel_version"
 
 export ARCH=arm
 export CROSS_COMPILE=arm-linux-gnueabihf-
@@ -67,6 +85,9 @@ make bindeb-pkg
 make -j
 make dtbs
 make modules_install INSTALL_MOD_PATH="/debian_root"
+kver=$(make kernelrelease)
+export kver
+echo "KVER: ${kver}"
 
 # Create exynos-kernel, /kernel_usb.bin, /kernel_emmc_ext4.bin
 cd arch/arm/boot
@@ -87,16 +108,6 @@ cat <<__EOF__ >kernel-exynos.its
             entry = <0>;
           };
         fdt@1 {
-            description = "exynos5250-snow-rev5.dtb";
-            data = /incbin/("dts/exynos5250-snow-rev5.dtb");
-            type = "flat_dt";
-            arch = "arm";
-            compression = "none";
-            hash@1 {
-                algo = "sha1";
-              };
-          };
-        fdt@2 {
             description = "exynos5250-snow.dtb";
             data = /incbin/("dts/exynos5250-snow.dtb");
             type = "flat_dt";
@@ -104,8 +115,28 @@ cat <<__EOF__ >kernel-exynos.its
             compression = "none";
             hash@1 {
                 algo = "sha1";
-              };
-          };
+            };
+        };
+        fdt@2 {
+            description = "exynos5250-snow-rev5.dtb";
+            data = /incbin/("dts/exynos5250-snow-rev5.dtb");
+            type = "flat_dt";
+            arch = "arm";
+            compression = "none";
+            hash@1 {
+                algo = "sha1";
+            };
+        };
+        fdt@3 {
+            description = "exynos5250-spring.dtb";
+            data = /incbin/("dts/exynos5250-spring.dtb");
+            type = "flat_dt";
+            arch = "arm";
+            compression = "none";
+            hash@1 {
+                algo = "sha1";
+            };
+        };
       };
     configurations {
         default = "conf@1";
@@ -116,6 +147,10 @@ cat <<__EOF__ >kernel-exynos.its
         conf@2{
             kernel = "kernel@1";
             fdt = "fdt@2";
+          };
+        conf@3 {
+            kernel = "kernel@1";
+            fdt = "fdt@3";
           };
       };
   };
@@ -218,7 +253,8 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get -y --no-install-recommends install abootimg cgpt fake-hwclock u-boot-tools vboot-utils vboot-kernel-utils \
   initramfs-tools parted sudo xz-utils wpasupplicant firmware-linux firmware-libertas \
   firmware-samsung locales-all ca-certificates initramfs-tools u-boot-tools locales \
-  console-common less network-manager git laptop-mode-tools python3 task-ssh-server
+  console-common less network-manager git laptop-mode-tools python3 task-ssh-server \
+  alsa-utils pulseaudio
 apt-get -y dist-upgrade
 apt-get -y autoremove
 apt-get clean
@@ -300,7 +336,8 @@ EOF
 
 # Mali GPU rules aka mali-rules package in ChromeOS
 cat <<EOF >debian_root/etc/udev/rules.d/50-mali.rules
-KERNEL=="mali0", MODE="0660", GROUP="video"
+KERNEL=="mali", MODE="0660", GROUP="video"
+KERNEL=="mali[0-9]", MODE="0660", GROUP="video"
 EOF
 
 # Video rules aka media-rules package in ChromeOS
@@ -320,6 +357,66 @@ ATTR{name}=="mt81xx-vcodec-dec", SYMLINK+="video-dec"
 ATTR{name}=="mt81xx-vcodec-enc", SYMLINK+="video-enc"
 ATTR{name}=="mt81xx-image-proc", SYMLINK+="image-proc0"
 EOF
+
+# ALSA
+mkdir -p debian_root/usr/share/alsa/ucm/Snow-I2S-MAX98095
+cat <<EOF >debian_root/usr/share/alsa/ucm/Snow-I2S-MAX98095/HiFi.conf
+SectionVerb {
+        # ALSA PCM
+        Value {
+                TQ "HiFi"
+
+                # ALSA PCM device for HiFi
+                PlaybackPCM "hw:SnowI2SMAX98095,0"
+		PlaybackChannels 2
+        }
+	EnableSequence [
+		cdev "hw:SnowI2SMAX98095"
+		cset "name='Left Speaker Mixer Left DAC1 Switch' on"
+		cset "name='Right Speaker Mixer Right DAC1 Switch' on"
+		cset "name='Left Headphone Mixer Left DAC1 Switch' on"
+		cset "name='Right Headphone Mixer Right DAC1 Switch' on"
+	]
+	DisableSequence [
+	]
+}
+SectionDevice."Headphone".0 {
+	Value {
+		JackName "SnowI2SMAX98095 Headphone Jack"
+	}
+
+	EnableSequence [
+		cdev "hw:SnowI2SMAX98095"
+		cset "name='Left Headphone Mixer Left DAC1 Switch' on"
+		cset "name='Right Headphone Mixer Right DAC1 Switch' on"
+	]
+	DisableSequence [
+		cdev "hw:SnowI2SMAX98095"
+		cset "name='Left Speaker Mixer Left DAC1 Switch' on"
+		cset "name='Right Speaker Mixer Right DAC1 Switch' on"
+	]
+}
+EOF
+cat <<EOF >debian_root/usr/share/alsa/ucm/Snow-I2S-MAX98095/Snow-I2S-MAX98095.conf
+Comment "Snow internal card"
+
+SectionUseCase."HiFi" {
+	File "HiFi.conf"
+	Comment "Default"
+}
+EOF
+cat <<EOF >debian_root/etc/asound.conf
+pcm.!default {
+  type hw
+  card 0
+}
+
+ctl.!default {
+  type hw
+  card 0
+}
+EOF
+sed -i 's/#load-module module-alsa-sink/load-module module-alsa-sink device=sysdefault/' debian_root/etc/pulse/default.pa
 
 # Latop-mode
 # By default, it goes to powersave that reduces cpu freq to 200 Hz!

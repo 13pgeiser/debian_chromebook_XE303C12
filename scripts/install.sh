@@ -109,7 +109,7 @@ function format_device() {
 	if [ "$(echo "$1" | grep mmcblk)" == "" ]; then
 		echo "Copying archive and install script"
 		cp rootfs.tar.xz /mnt/xe303c12/root/
-		cp *.sh /mnt/xe303c12/root/
+		cp ./*.sh /mnt/xe303c12/root/
 		cp ./*.bin /mnt/xe303c12/root/
 	fi
 	echo "Syncing"
