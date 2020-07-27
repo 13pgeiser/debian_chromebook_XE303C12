@@ -5,36 +5,52 @@ set -e
 figlet "CPUs: $(grep -c processor /proc/cpuinfo)"
 
 #
-release="buster"
-#release="bullseye"
-
-#
 kernel_option="debian_4.19"
 #kernel_option="debian_5.4"
 #kernel_option="rcn_5.4"
-install_headers=true
-build_armsoc_xorg=false
-use_hexdump0815=false
-
-if [ "$use_hexdump0815" = true ]; then
-	git clone https://github.com/hexdump0815/linux-mainline-and-mali-on-samsung-snow-chromebook.git
-fi
+#kernel_option="rcn_4.19"
 
 if [ "$kernel_option" == "debian_4.19" ]; then
+	release="buster"
+	build_armsoc_xorg=true
 	tar xJf /usr/src/linux-source-4.19.tar.xz
 	cd linux-source-4.19
-	if [ "$use_hexdump0815" = true ]; then
-		cp -rv ../linux-mainline-and-mali-on-samsung-snow-chromebook/misc.cbe/exynos5250-mali-complete/drivers/gpu/arm drivers/gpu
-		patch -p1 --no-backup-if-mismatch <../linux-mainline-and-mali-on-samsung-snow-chromebook/misc.cbe/exynos5250-mali-complete.patch
-		sed -i 's/totalram_pages()/totalram_pages/g' drivers/gpu/arm/midgard/mali_kbase_gpuprops.c
-	fi
+
 elif [ "$kernel_option" == "debian_5.4" ]; then
+	release="bullseye"
+	build_armsoc_xorg=false
 	tar xJf /usr/src/linux-source-5.4.tar.xz
 	cd linux-source-5.4
 	export kernel_version=5.4.19
+
+elif [ "$kernel_option" == "rcn_4.19" ]; then
+	release="buster"
+	build_armsoc_xorg=true
+	kernel_version=4.19.127
+	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v4.19.127-bone53/patch-4.19.127-bone53.diff.gz
+	patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
+	for patch_to_apply in $patches; do
+		wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
+	done
+	wget -nv $rcn_patch
+	rcn_patch=$(basename $rcn_patch)
+	gzip -d "$rcn_patch"
+	wget -nv https://mirrors.edge.kernel.org/pub/linux/kernel/v4.x/linux-$kernel_version.tar.xz
+	tar xJf linux-$kernel_version.tar.xz
+	(
+		cd linux-$kernel_version || exit
+		git apply "../${rcn_patch%.*}"
+		for patch_to_apply in $patches; do
+			patch -p1 --no-backup-if-mismatch <../$patch_to_apply
+		done
+	)
+	cd linux-$kernel_version
+
 elif [ "$kernel_option" == "rcn_5.4" ]; then
-	kernel_version=5.4.47
-	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.4.47-armv7-x30/patch-5.4.47-armv7-x30.diff.gz
+	release="bullseye"
+	build_armsoc_xorg=false
+	kernel_version=5.4.52
+	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.4.52-armv7-x31/patch-5.4.52-armv7-x31.diff.gz
 	patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 	for patch_to_apply in $patches; do
 		wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
@@ -50,14 +66,11 @@ elif [ "$kernel_option" == "rcn_5.4" ]; then
 		for patch_to_apply in $patches; do
 			patch -p1 --no-backup-if-mismatch <../$patch_to_apply
 		done
-		if [ "$use_hexdump0815" = true ]; then
-			cp -rv ../linux-mainline-and-mali-on-samsung-snow-chromebook/misc.cbe/exynos5250-mali-complete/drivers/gpu/arm drivers/gpu
-			patch -p1 --no-backup-if-mismatch <../linux-mainline-and-mali-on-samsung-snow-chromebook/misc.cbe/exynos5250-mali-complete.patch
-			patch -p1 --no-backup-if-mismatch <../linux-mainline-and-mali-on-samsung-snow-chromebook/misc.cbe/disable-panfrost-gpu-node-v5.4.patch
-		fi
 	)
 	cd linux-$kernel_version
+
 else
+	echo "Unsupported kernel_option: $kernel_option"
 	exit 1
 fi
 
@@ -175,14 +188,14 @@ update-binfmts --enable qemu-arm
 qemu-debootstrap --arch=armhf $release debian_root http://httpredir.debian.org/debian
 
 if [ "$release" == "buster" ]; then
-	# Update Apt sources
+	# Update Apt sources for buster
 	cat <<EOF >debian_root/etc/apt/sources.list
 deb http://httpredir.debian.org/debian buster main non-free contrib
 deb-src http://httpredir.debian.org/debian buster main non-free contrib
 deb http://security.debian.org/debian-security buster/updates main contrib non-free
 EOF
 else
-	# Update Apt sources
+	# Update Apt sources for bullseye
 	cat <<EOF >debian_root/etc/apt/sources.list
 deb http://httpredir.debian.org/debian $release main non-free contrib
 deb-src http://httpredir.debian.org/debian $release main non-free contrib
@@ -247,6 +260,7 @@ run_in_chroot() {
 # Prepare third-stage
 cat <<EOF >debian_root/root/third-stage
 #!/bin/bash
+set -ex
 apt-get update
 echo "root:toor" | chpasswd
 export DEBIAN_FRONTEND=noninteractive
@@ -271,6 +285,8 @@ run_in_chroot
 # XORG driver
 if [ "$build_armsoc_xorg" = true ]; then
 	cat <<EOF >debian_root/root/third-stage
+#!/bin/bash
+set -ex
 apt-get -y install xserver-xorg-dev libtool automake xutils-dev libudev-dev build-essential pkg-config git
 git clone https://github.com/paolosabatino/xf86-video-armsoc.git
 cd xf86-video-armsoc
@@ -281,41 +297,9 @@ make install
 cd ..
 apt-get -y remove xserver-xorg-dev libtool automake xutils-dev libudev-dev build-essential pkg-config git
 apt-get -y autoremove
+rm -rf xf86-video-armsoc
 EOF
 	run_in_chroot
-	mkdir -p debian_root/usr/share/X11/xorg.conf.d/
-	cat <<EOF >debian_root/usr/share/X11/xorg.conf.d/01-armsoc.conf
-Section "Device"
-	Identifier	"device"
-	Driver		"armsoc"
-	Option		"DRI2" "true"
-EndSection
-EOF
-fi
-
-# Kernel headers
-if [ "$install_headers" = true ]; then
-	cp /linux-headers-*.deb debian_root/root/
-	cat <<EOF >debian_root/root/third-stage
-#!/bin/bash
-apt-get update
-export DEBIAN_FRONTEND=noninteractive
-cd /root
-# Install packages
-apt-get -y --allow-downgrades install ./*.deb
-# Fixup headers
-apt-get install -y build-essential bc bison flex libssl-dev libc-dev wget
-export ARCH=arm
-MAKEFLAGS="-j$(grep -c processor /proc/cpuinfo)"
-export MAKEFLAGS
-cd /usr/src/linux-headers-*
-wget https://raw.githubusercontent.com/armbian/build/master/patch/misc/headers-debian-byteshift.patch -O - | patch -p1
-make -j scripts
-apt-get -y autoremove
-apt-get clean
-EOF
-	run_in_chroot
-	rm -f debian_root/root/*.deb
 fi
 
 # Xorg
@@ -433,7 +417,12 @@ tar pcJf ../rootfs.tar.xz ./*
 	mv /kernel_emmc_ext4.bin xe303c12/kernel_emmc_ext4.bin
 	mv rootfs.tar.xz xe303c12/rootfs.tar.xz
 	cp ../scripts/install.sh xe303c12/install.sh
-	cp ../scripts/xfce.sh xe303c12/xfce.sh
+	cat <<EOF >xe303c12/xfce.sh
+#!/bin/bash
+apt-get install -y task-xfce-desktop xserver-xorg-input-synaptics libglx-mesa0 libgl1-mesa-dri mesa-opencl-icd mesa-va-drivers mesa-vdpau-drivers
+alsaucm -c Snow-I2S-MAX98095
+EOF
+	chmod +x xe303c12/xfce.sh
 	zip -r ./xe303c12.zip xe303c12/
 	mkdir -p debs
 	cp ./*.deb /debs/
