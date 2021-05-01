@@ -45,8 +45,8 @@ RUN set -ex \
     && apt-get update \
     && apt-get install -y gcc-multilib \
     && apt-get install -y linux-source-4.19 \
-    && apt-get -t buster-backports build-dep -y linux-source-5.4 \
-    && apt-get -t buster-backports install -y linux-source-5.4 \
+    && apt-get -t buster-backports build-dep -y linux-source-5.10 \
+    && apt-get -t buster-backports install -y linux-source-5.10 \
     && apt-get clean \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 

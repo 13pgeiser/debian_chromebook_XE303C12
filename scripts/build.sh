@@ -2,11 +2,11 @@
 # This script must run in a container with priviledges! (chroot, bin_fmt)
 set -e
 
-figlet "CPUs: $(grep -c processor /proc/cpuinfo)"
+figlet "CPUs: $(nproc)"
 
 #
 kernel_option="debian_4.19"
-#kernel_option="debian_5.4"
+#kernel_option="debian_5.x"
 #kernel_option="rcn_5.4"
 #kernel_option="rcn_4.19"
 
@@ -16,19 +16,22 @@ if [ "$kernel_option" == "debian_4.19" ]; then
 	tar xJf /usr/src/linux-source-4.19.tar.xz
 	cd linux-source-4.19
 
-elif [ "$kernel_option" == "debian_5.4" ]; then
+elif [ "$kernel_option" == "debian_5.x" ]; then
 	release="bullseye"
 	build_armsoc_xorg=false
-	tar xJf /usr/src/linux-source-5.4.tar.xz
-	cd linux-source-5.4
-	export kernel_version=5.4.19
+	tar xJf /usr/src/linux-source-5.10.tar.xz
+	cd linux-source-5.10
+	export kernel_version=5.10.24
 
 elif [ "$kernel_option" == "rcn_4.19" ]; then
 	release="buster"
 	build_armsoc_xorg=true
-	kernel_version=4.19.127
-	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v4.19.127-bone53/patch-4.19.127-bone53.diff.gz
-	patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
+	#kernel_version=4.19.127
+	#rcn_patch=https://rcn-ee.com/deb/sid-armhf/v4.19.127-bone53/patch-4.19.127-bone53.diff.gz
+	#patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
+	kernel_version=4.19.188
+	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v4.19.188-armv7-x64/patch-4.19.188-armv7-x64.diff.gz
+	patches=""
 	for patch_to_apply in $patches; do
 		wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
 	done
@@ -80,7 +83,7 @@ figlet "KERNEL: $kernel_version"
 
 export ARCH=arm
 export CROSS_COMPILE=arm-linux-gnueabihf-
-MAKEFLAGS="-j$(grep -c processor /proc/cpuinfo)"
+MAKEFLAGS="-j$(nproc)"
 export MAKEFLAGS
 
 # Get TI firmwares (not mandatory)...
