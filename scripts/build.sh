@@ -33,7 +33,7 @@ elif [ "$kernel_option" == "rcn_4.19" ]; then
 	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v4.19.188-armv7-x64/patch-4.19.188-armv7-x64.diff.gz
 	patches=""
 	for patch_to_apply in $patches; do
-		wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
+		wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/"$patch_to_apply"
 	done
 	wget -nv $rcn_patch
 	rcn_patch=$(basename $rcn_patch)
@@ -44,7 +44,7 @@ elif [ "$kernel_option" == "rcn_4.19" ]; then
 		cd linux-$kernel_version || exit
 		git apply "../${rcn_patch%.*}"
 		for patch_to_apply in $patches; do
-			patch -p1 --no-backup-if-mismatch <../$patch_to_apply
+			patch -p1 --no-backup-if-mismatch <../"$patch_to_apply"
 		done
 	)
 	cd linux-$kernel_version

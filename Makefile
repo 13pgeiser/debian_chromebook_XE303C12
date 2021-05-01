@@ -14,6 +14,6 @@ format:
 	docker run --rm -v "$(shell pwd)/scripts":/mnt mvdan/shfmt -w /mnt/install.sh
 
 run:
-	bash ./bash_helpers.sh || true
+	bash ./scripts/docker_build.sh || true
 
 .PHONY: check format run
