@@ -427,7 +427,10 @@ alsaucm -c Snow-I2S-MAX98095
 EOF
 	chmod +x xe303c12/xfce.sh
 	zip -r ./xe303c12.zip xe303c12/
-	mkdir -p debs
-	cp ./*.deb /debs/
+	mkdir -p release
+	mv ./*.deb /release/
+	mv ./xe303c12.zip /release/
 	ls -1 /
+	echo "Done"
+	ls -1 /release
 )
