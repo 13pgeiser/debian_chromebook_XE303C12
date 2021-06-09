@@ -7,7 +7,7 @@ figlet "CPUs: $(nproc)"
 #
 kernel_option="debian_4.19"
 #kernel_option="debian_5.x"
-#kernel_option="rcn_5.4"
+#kernel_option="rcn_5.x"
 #kernel_option="rcn_4.19"
 
 if [ "$kernel_option" == "debian_4.19" ]; then
@@ -21,16 +21,12 @@ elif [ "$kernel_option" == "debian_5.x" ]; then
 	build_armsoc_xorg=false
 	tar xJf /usr/src/linux-source-5.10.tar.xz
 	cd linux-source-5.10
-	export kernel_version=5.10.24
 
 elif [ "$kernel_option" == "rcn_4.19" ]; then
 	release="buster"
 	build_armsoc_xorg=true
-	#kernel_version=4.19.127
-	#rcn_patch=https://rcn-ee.com/deb/sid-armhf/v4.19.127-bone53/patch-4.19.127-bone53.diff.gz
-	#patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
-	kernel_version=4.19.188
-	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v4.19.188-armv7-x64/patch-4.19.188-armv7-x64.diff.gz
+	kernel_version=4.19.191
+	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v4.19.191-armv7-x67/patch-4.19.191-armv7-x67.diff.gz
 	patches=""
 	for patch_to_apply in $patches; do
 		wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/"$patch_to_apply"
@@ -49,11 +45,11 @@ elif [ "$kernel_option" == "rcn_4.19" ]; then
 	)
 	cd linux-$kernel_version
 
-elif [ "$kernel_option" == "rcn_5.4" ]; then
+elif [ "$kernel_option" == "rcn_5.x" ]; then
 	release="bullseye"
 	build_armsoc_xorg=false
-	kernel_version=5.4.52
-	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.4.52-armv7-x31/patch-5.4.52-armv7-x31.diff.gz
+	kernel_version=5.10.41
+	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.10.41-armv7-x39/patch-5.10.41-armv7-x39.diff.gz
 	patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 	for patch_to_apply in $patches; do
 		wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
@@ -86,16 +82,19 @@ export CROSS_COMPILE=arm-linux-gnueabihf-
 MAKEFLAGS="-j$(nproc)"
 export MAKEFLAGS
 
+v=("${kernel_version//./ }")
+version="${v[0]}.${v[1]}"
+
 # Get TI firmwares (not mandatory)...
 mkdir -p firmware
-wget https://github.com/beagleboard/linux/blob/4.19/firmware/am335x-bone-scale-data.bin?raw=true -O firmware/am335x-bone-scale-data.bin
-wget https://github.com/beagleboard/linux/blob/4.19/firmware/am335x-evm-scale-data.bin?raw=true -O firmware/am335x-evm-scale-data.bin
-wget https://github.com/beagleboard/linux/blob/4.19/firmware/am335x-pm-firmware.bin?raw=true -O firmware/am335x-pm-firmware.bin
-wget https://github.com/beagleboard/linux/blob/4.19/firmware/am335x-pm-firmware.elf?raw=true -O firmware/am335x-pm-firmware.elf
-wget https://github.com/beagleboard/linux/blob/4.19/firmware/am43x-evm-scale-data.bin?raw=true -O firmware/am43x-evm-scale-data.bin
+wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am335x-bone-scale-data.bin?raw=true -O firmware/am335x-bone-scale-data.bin
+wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am335x-evm-scale-data.bin?raw=true -O firmware/am335x-evm-scale-data.bin
+wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am335x-pm-firmware.bin?raw=true -O firmware/am335x-pm-firmware.bin
+wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am335x-pm-firmware.elf?raw=true -O firmware/am335x-pm-firmware.elf
+wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am43x-evm-scale-data.bin?raw=true -O firmware/am43x-evm-scale-data.bin
 
 # Copy config, apply and build kernel
-cp /configs/linux_config ./.config
+cp /configs/"$version" ./.config
 make olddefconfig
 make bindeb-pkg
 make -j

@@ -3,10 +3,6 @@
 FROM debian:buster
 MAINTAINER Pascal Geiser <pgeiser@pgeiser.com>
 
-RUN echo 'deb-src http://deb.debian.org/debian buster main' >> /etc/apt/sources.list
-RUN echo 'deb http://deb.debian.org/debian buster-backports main' >> /etc/apt/sources.list
-RUN echo 'deb-src http://deb.debian.org/debian buster-backports main' >> /etc/apt/sources.list
-
 # Install base deps
 RUN set -ex \
     && apt-get update \
@@ -40,6 +36,10 @@ RUN set -ex \
 	cpio \
     && apt-get clean \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
+
+RUN echo 'deb-src http://deb.debian.org/debian buster main' >> /etc/apt/sources.list
+RUN echo 'deb http://deb.debian.org/debian buster-backports main' >> /etc/apt/sources.list
+RUN echo 'deb-src http://deb.debian.org/debian buster-backports main' >> /etc/apt/sources.list
 
 RUN set -ex \
     && apt-get update \
