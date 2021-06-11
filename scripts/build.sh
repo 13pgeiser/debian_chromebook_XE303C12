@@ -82,8 +82,11 @@ export CROSS_COMPILE=arm-linux-gnueabihf-
 MAKEFLAGS="-j$(nproc)"
 export MAKEFLAGS
 
-v=("${kernel_version//./ }")
-version="${v[0]}.${v[1]}"
+# shellcheck disable=SC2206
+vers=(${kernel_version//./ })
+version="${vers[0]}.${vers[1]}"
+
+figlet "VERSION: $version"
 
 # Get TI firmwares (not mandatory)...
 mkdir -p firmware
