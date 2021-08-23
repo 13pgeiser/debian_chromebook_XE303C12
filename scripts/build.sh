@@ -2,54 +2,24 @@
 # This script must run in a container with priviledges! (chroot, bin_fmt)
 set -e
 
+release="bullseye"
+figlet "Release: $release"
+
 figlet "CPUs: $(nproc)"
 
 #
-kernel_option="debian_4.19"
-#kernel_option="debian_5.x"
+kernel_option="debian_5.x"
 #kernel_option="rcn_5.x"
-#kernel_option="rcn_4.19"
+#kernel_option="debian_5.x_official"
 
-if [ "$kernel_option" == "debian_4.19" ]; then
-	release="buster"
-	build_armsoc_xorg=true
-	tar xJf /usr/src/linux-source-4.19.tar.xz
-	cd linux-source-4.19
-
-elif [ "$kernel_option" == "debian_5.x" ]; then
-	release="bullseye"
-	build_armsoc_xorg=false
+if [ "$kernel_option" == "debian_5.x" ]; then
 	tar xJf /usr/src/linux-source-5.10.tar.xz
 	cd linux-source-5.10
-
-elif [ "$kernel_option" == "rcn_4.19" ]; then
-	release="buster"
-	build_armsoc_xorg=true
-	kernel_version=4.19.191
-	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v4.19.191-armv7-x67/patch-4.19.191-armv7-x67.diff.gz
-	patches=""
-	for patch_to_apply in $patches; do
-		wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/"$patch_to_apply"
-	done
-	wget -nv $rcn_patch
-	rcn_patch=$(basename $rcn_patch)
-	gzip -d "$rcn_patch"
-	wget -nv https://mirrors.edge.kernel.org/pub/linux/kernel/v4.x/linux-$kernel_version.tar.xz
-	tar xJf linux-$kernel_version.tar.xz
-	(
-		cd linux-$kernel_version || exit
-		git apply "../${rcn_patch%.*}"
-		for patch_to_apply in $patches; do
-			patch -p1 --no-backup-if-mismatch <../"$patch_to_apply"
-		done
-	)
-	cd linux-$kernel_version
+	kernel_version="$(make kernelversion)"
 
 elif [ "$kernel_option" == "rcn_5.x" ]; then
-	release="bullseye"
-	build_armsoc_xorg=false
-	kernel_version=5.10.41
-	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.10.41-armv7-x39/patch-5.10.41-armv7-x39.diff.gz
+	kernel_version=5.10.56
+	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.10.56-armv7-x47/patch-5.10.56-armv7-x47.diff.gz
 	patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 	for patch_to_apply in $patches; do
 		wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
@@ -67,49 +37,199 @@ elif [ "$kernel_option" == "rcn_5.x" ]; then
 		done
 	)
 	cd linux-$kernel_version
+	kernel_version="$(make kernelversion)"
 
+elif [ "$kernel_option" == "debian_5.x_official" ]; then
+	echo "Using debian kernel"
 else
 	echo "Unsupported kernel_option: $kernel_option"
 	exit 1
 fi
 
-kernel_version="$(make kernelversion)"
-export kernel_version
-figlet "KERNEL: $kernel_version"
+if [ -n "${kernel_version}" ]; then
+	export kernel_version
+	figlet "KERNEL: $kernel_version"
+	# shellcheck disable=SC2206
+	vers=(${kernel_version//./ })
+	version="${vers[0]}.${vers[1]}"
+	figlet "VERSION: $version"
 
-export ARCH=arm
-export CROSS_COMPILE=arm-linux-gnueabihf-
-MAKEFLAGS="-j$(nproc)"
-export MAKEFLAGS
+	# Get TI firmwares (not mandatory)...
+	mkdir -p firmware
+	wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am335x-bone-scale-data.bin?raw=true -O firmware/am335x-bone-scale-data.bin
+	wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am335x-evm-scale-data.bin?raw=true -O firmware/am335x-evm-scale-data.bin
+	wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am335x-pm-firmware.bin?raw=true -O firmware/am335x-pm-firmware.bin
+	wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am335x-pm-firmware.elf?raw=true -O firmware/am335x-pm-firmware.elf
+	wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am43x-evm-scale-data.bin?raw=true -O firmware/am43x-evm-scale-data.bin
 
-# shellcheck disable=SC2206
-vers=(${kernel_version//./ })
-version="${vers[0]}.${vers[1]}"
+	# Copy config, apply and build kernel
+	export ARCH=arm
+	export CROSS_COMPILE=arm-linux-gnueabihf-
+	cp /configs/"$version" ./.config
+	make olddefconfig
+	make bindeb-pkg "-j$(nproc)"
+	make dtbs
+	kver=$(make kernelrelease)
+	export kver
+	figlet "KVER: $kver"
+	cp ./arch/arm/boot/dts/exynos5250*.dtb /
+fi
 
-figlet "VERSION: $version"
+cd /
 
-# Get TI firmwares (not mandatory)...
-mkdir -p firmware
-wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am335x-bone-scale-data.bin?raw=true -O firmware/am335x-bone-scale-data.bin
-wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am335x-evm-scale-data.bin?raw=true -O firmware/am335x-evm-scale-data.bin
-wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am335x-pm-firmware.bin?raw=true -O firmware/am335x-pm-firmware.bin
-wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am335x-pm-firmware.elf?raw=true -O firmware/am335x-pm-firmware.elf
-wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am43x-evm-scale-data.bin?raw=true -O firmware/am43x-evm-scale-data.bin
+# Make sure qemu-arm can execute transparently ARM binaries.
+mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
+update-binfmts --enable qemu-arm
 
-# Copy config, apply and build kernel
-cp /configs/"$version" ./.config
-make olddefconfig
-make bindeb-pkg
-make -j
-make dtbs
-make modules_install INSTALL_MOD_PATH="/debian_root"
-kver=$(make kernelrelease)
-export kver
-echo "KVER: ${kver}"
+# Extract debian!
+debootstrap --arch=armhf $release debian_root http://httpredir.debian.org/debian
+
+# Update Apt sources for bullseye
+cat <<EOF >debian_root/etc/apt/sources.list
+deb http://httpredir.debian.org/debian $release main non-free contrib
+deb-src http://httpredir.debian.org/debian $release main non-free contrib
+deb https://security.debian.org/debian-security bullseye-security main contrib non-free
+EOF
+
+# Change hostname
+echo "chromebook" >debian_root/etc/hostname
+
+# Add it to the hosts
+cat <<EOF >debian_root/etc/hosts
+127.0.0.1       chromebook    localhost
+::1             localhost ip6-localhost ip6-loopback
+fe00::0         ip6-localnet
+ff00::0         ip6-mcastprefix
+ff02::1         ip6-allnodes
+ff02::2         ip6-allrouters
+EOF
+
+# Add loopback interface
+cat <<EOF >debian_root/etc/network/interfaces
+auto lo
+iface lo inet loopback
+EOF
+
+# And configure default DNS (google...)
+cat <<EOF >debian_root/etc/resolv.conf
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+EOF
+
+# Make sure to get new SSH keys on installation
+# Taken as-is from https://github.com/RPi-Distro/raspberrypi-sys-mods/blob/master/debian/raspberrypi-sys-mods.regenerate_ssh_host_keys.service
+cat <<EOF >debian_root/etc/systemd/system/regenerate_ssh_host_keys.service
+[Unit]
+Description=Regenerate SSH host keys
+Before=ssh.service
+ConditionFileIsExecutable=/usr/bin/ssh-keygen
+
+[Service]
+Type=oneshot
+ExecStartPre=-/bin/dd if=/dev/hwrng of=/dev/urandom count=1 bs=4096
+ExecStartPre=-/bin/sh -c "/bin/rm -f -v /etc/ssh/ssh_host_*_key*"
+ExecStart=/usr/bin/ssh-keygen -A -v
+ExecStartPost=/bin/systemctl disable regenerate_ssh_host_keys
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+run_in_chroot() {
+	mount -t proc proc debian_root/proc
+	mount -o bind /dev/ debian_root/dev/
+	mount -o bind /dev/pts debian_root/dev/pts
+	chmod +x debian_root/root/third-stage
+	LANG=C chroot debian_root /root/third-stage
+	umount debian_root/dev/pts
+	umount debian_root/dev/
+	umount debian_root/proc
+	rm -f debian_root/root/third-stage
+	rm -f /0
+	rm -f /hs_err*
+	rm -rf /root/.bash_history
+	rm -f /usr/bin/qemu*
+}
+
+# Prepare third-stage
+cat <<"EOF" >debian_root/root/third-stage
+#!/bin/bash
+set -ex
+apt-get update
+echo "root:toor" | chpasswd
+export DEBIAN_FRONTEND=noninteractive
+apt-get -y --no-install-recommends install \
+	abootimg cgpt fake-hwclock u-boot-tools vboot-utils vboot-kernel-utils \
+	initramfs-tools parted sudo xz-utils wpasupplicant  \
+	locales-all ca-certificates initramfs-tools u-boot-tools locales \
+	console-common less network-manager git laptop-mode-tools \
+	alsa-utils pulseaudio python3 task-ssh-server \
+	firmware-realtek firmware-linux firmware-libertas firmware-samsung
+apt-get -y dist-upgrade
+apt-get -y autoremove
+apt-get clean
+# Enable ssh key regeneration
+systemctl enable regenerate_ssh_host_keys
+EOF
+run_in_chroot
+
+if [ -z "$kernel_version" ]; then
+	cat <<"EOF" >debian_root/root/third-stage
+#!/bin/bash
+set -ex
+apt-get update
+echo "root:toor" | chpasswd
+export DEBIAN_FRONTEND=noninteractive
+apt-get -y --no-install-recommends install linux-image-armmp 
+apt-get -y dist-upgrade
+apt-get -y autoremove
+apt-get clean
+EOF
+	run_in_chroot
+else
+	cp ./*.deb debian_root/
+	cat <<"EOF" >debian_root/root/third-stage
+#!/bin/bash
+set -ex
+apt-get install /*.deb
+apt-get clean
+EOF
+	run_in_chroot
+	rm -f debian_root/*.deb
+fi
+
+cat <<"EOF" >debian_root/root/third-stage
+#!/bin/bash
+set -ex
+depmod -a "$(ls /lib/modules)"
+EOF
+run_in_chroot
+
+# Xorg
+mkdir -p debian_root/etc/X11/xorg.conf.d/
+cat <<EOF >debian_root/etc/X11/xorg.conf.d/10-synaptics-chromebook.conf
+Section "InputClass"
+        Identifier          	  "touchpad"
+        MatchIsTouchpad     "on"
+        Driver                       "synaptics"
+        Option                      "TapButton1"    "1"
+        Option                      "TapButton2"    "3"
+        Option                      "TapButton3"    "2"
+        Option                      "FingerLow"     "5"
+        Option                      "FingerHigh"    "10"
+        Option                      "HorizTwoFingerScroll" "on"
+        Option                      "VertTwoFingerScroll" "on"
+EndSection
+EOF
+
+# Latop-mode
+# By default, it goes to powersave that reduces cpu freq to 200 Hz!
+sed -i 's/BATT_CPU_GOVERNOR=ondemand/BATT_CPU_GOVERNOR=conservative/' debian_root/etc/laptop-mode/conf.d/cpufreq.conf
+sed -i 's/LM_AC_CPU_GOVERNOR=ondemand/LM_AC_CPU_GOVERNOR=performance/' debian_root/etc/laptop-mode/conf.d/cpufreq.conf
+sed -i 's/NOLM_AC_CPU_GOVERNOR=ondemand/NOLM_AC_CPU_GOVERNOR=performance/' debian_root/etc/laptop-mode/conf.d/cpufreq.conf
 
 # Create exynos-kernel, /kernel_usb.bin, /kernel_emmc_ext4.bin
-cd arch/arm/boot
-cat <<__EOF__ >kernel-exynos.its
+cat <<__EOF__ >debian_root/boot/kernel-exynos.its
 /dts-v1/;
 
 / {
@@ -173,6 +293,20 @@ cat <<__EOF__ >kernel-exynos.its
       };
   };
 __EOF__
+cd debian_root/boot/
+cp vmlinuz* zImage
+
+mkdir -p dts
+cd dts
+if [ -n "${kernel_version}" ]; then
+	cp /*.dtb .
+else
+	wget http://ftp.debian.org/debian/dists/bullseye/main/installer-armhf/current/images/device-tree/exynos5250-snow-rev5.dtb
+	wget http://ftp.debian.org/debian/dists/bullseye/main/installer-armhf/current/images/device-tree/exynos5250-snow.dtb
+	wget http://ftp.debian.org/debian/dists/bullseye/main/installer-armhf/current/images/device-tree/exynos5250-spring.dtb
+fi
+cd .. # dts
+
 mkimage -D "-I dts -O dtb -p 2048" -f kernel-exynos.its exynos-kernel
 dd if=/dev/zero of=bootloader.bin bs=512 count=1
 echo 'noinitrd console=tty0 root=PARTUUID=%U/PARTNROFF=2 rootwait rw rootfstype=ext4' >cmdline
@@ -183,235 +317,9 @@ echo 'noinitrd console=tty0 root=/dev/mmcblk0p3 rootwait rw rootfstype=ext4' >cm
 vbutil_kernel --arch arm --pack /kernel_emmc_ext4.bin --keyblock /usr/share/vboot/devkeys/kernel.keyblock \
 	--signprivate /usr/share/vboot/devkeys/kernel_data_key.vbprivk --version 1 --config cmdline \
 	--bootloader bootloader.bin --vmlinuz exynos-kernel
-cd /
-
-# Make sure qemu-arm can execute transparently ARM binaries.
-mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
-update-binfmts --enable qemu-arm
-
-# Extract debian!
-qemu-debootstrap --arch=armhf $release debian_root http://httpredir.debian.org/debian
-
-if [ "$release" == "buster" ]; then
-	# Update Apt sources for buster
-	cat <<EOF >debian_root/etc/apt/sources.list
-deb http://httpredir.debian.org/debian buster main non-free contrib
-deb-src http://httpredir.debian.org/debian buster main non-free contrib
-deb http://security.debian.org/debian-security buster/updates main contrib non-free
-EOF
-else
-	# Update Apt sources for bullseye
-	cat <<EOF >debian_root/etc/apt/sources.list
-deb http://httpredir.debian.org/debian $release main non-free contrib
-deb-src http://httpredir.debian.org/debian $release main non-free contrib
-EOF
-fi
-
-# Change hostname
-echo "chromebook" >debian_root/etc/hostname
-
-# Add it to the hosts
-cat <<EOF >debian_root/etc/hosts
-127.0.0.1       chromebook    localhost
-::1             localhost ip6-localhost ip6-loopback
-fe00::0         ip6-localnet
-ff00::0         ip6-mcastprefix
-ff02::1         ip6-allnodes
-ff02::2         ip6-allrouters
-EOF
-
-# Add loopback interface
-cat <<EOF >debian_root/etc/network/interfaces
-auto lo
-iface lo inet loopback
-EOF
-
-# And configure default DNS (google...)
-cat <<EOF >debian_root/etc/resolv.conf
-nameserver 8.8.8.8
-nameserver 8.8.4.4
-EOF
-
-# Taken as-is from https://github.com/RPi-Distro/raspberrypi-sys-mods/blob/master/debian/raspberrypi-sys-mods.regenerate_ssh_host_keys.service
-cat <<EOF >debian_root/etc/systemd/system/regenerate_ssh_host_keys.service
-[Unit]
-Description=Regenerate SSH host keys
-Before=ssh.service
-ConditionFileIsExecutable=/usr/bin/ssh-keygen
-
-[Service]
-Type=oneshot
-ExecStartPre=-/bin/dd if=/dev/hwrng of=/dev/urandom count=1 bs=4096
-ExecStartPre=-/bin/sh -c "/bin/rm -f -v /etc/ssh/ssh_host_*_key*"
-ExecStart=/usr/bin/ssh-keygen -A -v
-ExecStartPost=/bin/systemctl disable regenerate_ssh_host_keys
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-run_in_chroot() {
-	mount -t proc proc debian_root/proc
-	mount -o bind /dev/ debian_root/dev/
-	mount -o bind /dev/pts debian_root/dev/pts
-	chmod +x debian_root/root/third-stage
-	LANG=C chroot debian_root /root/third-stage
-	umount debian_root/dev/pts
-	umount debian_root/dev/
-	umount debian_root/proc
-	rm -f debian_root/root/third-stage
-}
-
-# Prepare third-stage
-cat <<EOF >debian_root/root/third-stage
-#!/bin/bash
-set -ex
-apt-get update
-echo "root:toor" | chpasswd
-export DEBIAN_FRONTEND=noninteractive
-apt-get -y --no-install-recommends install abootimg cgpt fake-hwclock u-boot-tools vboot-utils vboot-kernel-utils \
-  initramfs-tools parted sudo xz-utils wpasupplicant firmware-linux firmware-libertas \
-  firmware-samsung locales-all ca-certificates initramfs-tools u-boot-tools locales \
-  console-common less network-manager git laptop-mode-tools python3 task-ssh-server \
-  alsa-utils pulseaudio
-apt-get -y dist-upgrade
-apt-get -y autoremove
-apt-get clean
-depmod -a $kernel_version
-rm -f /0
-rm -f /hs_err*
-rm -rf /root/.bash_history
-rm -f /usr/bin/qemu*
-# Enable ssh key regeneration
-systemctl enable regenerate_ssh_host_keys
-EOF
-run_in_chroot
-
-# XORG driver
-if [ "$build_armsoc_xorg" = true ]; then
-	cat <<EOF >debian_root/root/third-stage
-#!/bin/bash
-set -ex
-apt-get -y install xserver-xorg-dev libtool automake xutils-dev libudev-dev build-essential pkg-config git
-git clone https://github.com/paolosabatino/xf86-video-armsoc.git
-cd xf86-video-armsoc
-./autogen.sh
-./configure --enable-maintainer-mode --prefix=/usr
-make
-make install
+rm -rf ./dts
+rm -f zImage cmdline exynos-kernel kernel-exynos.its bootloader.bin
 cd ..
-apt-get -y remove xserver-xorg-dev libtool automake xutils-dev libudev-dev build-essential pkg-config git
-apt-get -y autoremove
-rm -rf xf86-video-armsoc
-EOF
-	run_in_chroot
-fi
-
-# Xorg
-mkdir -p debian_root/etc/X11/xorg.conf.d/
-cat <<EOF >debian_root/etc/X11/xorg.conf.d/10-synaptics-chromebook.conf
-Section "InputClass"
-        Identifier          	    "touchpad"
-        MatchIsTouchpad             "on"
-        Driver                      "synaptics"
-        Option                      "TapButton1"    "1"
-        Option                      "TapButton2"    "3"
-        Option                      "TapButton3"    "2"
-        Option                      "FingerLow"     "15"
-        Option                      "FingerHigh"    "20"
-        Option                      "FingerPress"   "256"
-EndSection
-EOF
-
-# Mali GPU rules aka mali-rules package in ChromeOS
-cat <<EOF >debian_root/etc/udev/rules.d/50-mali.rules
-KERNEL=="mali", MODE="0660", GROUP="video"
-KERNEL=="mali[0-9]", MODE="0660", GROUP="video"
-EOF
-
-# Video rules aka media-rules package in ChromeOS
-cat <<EOF >debian_root/etc/udev/rules.d/50-media.rules
-ATTR{name}=="s5p-mfc-dec", SYMLINK+="video-dec"
-ATTR{name}=="s5p-mfc-enc", SYMLINK+="video-enc"
-ATTR{name}=="s5p-jpeg-dec", SYMLINK+="jpeg-dec"
-ATTR{name}=="exynos-gsc.0*", SYMLINK+="image-proc0"
-ATTR{name}=="exynos-gsc.1*", SYMLINK+="image-proc1"
-ATTR{name}=="exynos-gsc.2*", SYMLINK+="image-proc2"
-ATTR{name}=="exynos-gsc.3*", SYMLINK+="image-proc3"
-ATTR{name}=="rk3288-vpu-dec", SYMLINK+="video-dec"
-ATTR{name}=="rk3288-vpu-enc", SYMLINK+="video-enc"
-ATTR{name}=="go2001-dec", SYMLINK+="video-dec"
-ATTR{name}=="go2001-enc", SYMLINK+="video-enc"
-ATTR{name}=="mt81xx-vcodec-dec", SYMLINK+="video-dec"
-ATTR{name}=="mt81xx-vcodec-enc", SYMLINK+="video-enc"
-ATTR{name}=="mt81xx-image-proc", SYMLINK+="image-proc0"
-EOF
-
-# ALSA
-mkdir -p debian_root/usr/share/alsa/ucm/Snow-I2S-MAX98095
-cat <<EOF >debian_root/usr/share/alsa/ucm/Snow-I2S-MAX98095/HiFi.conf
-SectionVerb {
-        # ALSA PCM
-        Value {
-                TQ "HiFi"
-
-                # ALSA PCM device for HiFi
-                PlaybackPCM "hw:SnowI2SMAX98095,0"
-		PlaybackChannels 2
-        }
-	EnableSequence [
-		cdev "hw:SnowI2SMAX98095"
-		cset "name='Left Speaker Mixer Left DAC1 Switch' on"
-		cset "name='Right Speaker Mixer Right DAC1 Switch' on"
-		cset "name='Left Headphone Mixer Left DAC1 Switch' on"
-		cset "name='Right Headphone Mixer Right DAC1 Switch' on"
-	]
-	DisableSequence [
-	]
-}
-SectionDevice."Headphone".0 {
-	Value {
-		JackName "SnowI2SMAX98095 Headphone Jack"
-	}
-
-	EnableSequence [
-		cdev "hw:SnowI2SMAX98095"
-		cset "name='Left Headphone Mixer Left DAC1 Switch' on"
-		cset "name='Right Headphone Mixer Right DAC1 Switch' on"
-	]
-	DisableSequence [
-		cdev "hw:SnowI2SMAX98095"
-		cset "name='Left Speaker Mixer Left DAC1 Switch' on"
-		cset "name='Right Speaker Mixer Right DAC1 Switch' on"
-	]
-}
-EOF
-cat <<EOF >debian_root/usr/share/alsa/ucm/Snow-I2S-MAX98095/Snow-I2S-MAX98095.conf
-Comment "Snow internal card"
-
-SectionUseCase."HiFi" {
-	File "HiFi.conf"
-	Comment "Default"
-}
-EOF
-cat <<EOF >debian_root/etc/asound.conf
-pcm.!default {
-  type hw
-  card 0
-}
-
-ctl.!default {
-  type hw
-  card 0
-}
-EOF
-sed -i 's/#load-module module-alsa-sink/load-module module-alsa-sink device=sysdefault/' debian_root/etc/pulse/default.pa
-
-# Latop-mode
-# By default, it goes to powersave that reduces cpu freq to 200 Hz!
-sed -i 's/BATT_CPU_GOVERNOR=ondemand/BATT_CPU_GOVERNOR=conservative/' debian_root/etc/laptop-mode/conf.d/cpufreq.conf
-sed -i 's/LM_AC_CPU_GOVERNOR=ondemand/LM_AC_CPU_GOVERNOR=performance/' debian_root/etc/laptop-mode/conf.d/cpufreq.conf
-sed -i 's/NOLM_AC_CPU_GOVERNOR=ondemand/NOLM_AC_CPU_GOVERNOR=performance/' debian_root/etc/laptop-mode/conf.d/cpufreq.conf
 
 cd /debian_root
 tar pcJf ../rootfs.tar.xz ./*
@@ -422,17 +330,36 @@ tar pcJf ../rootfs.tar.xz ./*
 	mv /kernel_emmc_ext4.bin xe303c12/kernel_emmc_ext4.bin
 	mv rootfs.tar.xz xe303c12/rootfs.tar.xz
 	cp ../scripts/install.sh xe303c12/install.sh
-	cat <<EOF >xe303c12/xfce.sh
+	cat <<'EOF' >xe303c12/xfce_install.sh
 #!/bin/bash
-apt-get install -y task-xfce-desktop xserver-xorg-input-synaptics libglx-mesa0 libgl1-mesa-dri mesa-opencl-icd mesa-va-drivers mesa-vdpau-drivers
-alsaucm -c Snow-I2S-MAX98095
+# Install packages
+apt-get update
+apt-get dist-upgrade -y
+apt-get install -y \
+	task-xfce-desktop xserver-xorg-input-synaptics \
+	apparmor-profiles-extra gvfs-backends xfce4-indicator-plugin xfce4-mpc-plugin  \
+	libglx-mesa0 libgl1-mesa-dri mesa-opencl-icd mesa-va-drivers mesa-vdpau-drivers
+apt-get clean
+# Wait 1s before starting up the display manager
+sed -i -e 's/\[Service\]/\[Service\]\nExecStartPre=\/usr\/bin\/sleep 1/g' /etc/systemd/system/display-manager.service
+# Configure audio settings.
+amixer cset numid=5,iface=MIXER,name='Headphone Switch' 1
+amixer cset numid=1,iface=MIXER,name='Headphone Volume' 50
+amixer cset numid=43,iface=MIXER,name='Left Speaker Mixer Left DAC1 Switch' 1
+amixer cset numid=52,iface=MIXER,name='Right Speaker Mixer Right DAC1 Switch' 1
+amixer cset numid=31,iface=MIXER,name='Left Headphone Mixer Left DAC1 Switch' 1
+amixer cset numid=38,iface=MIXER,name='Right Headphone Mixer Right DAC1 Switch' 1
 EOF
-	chmod +x xe303c12/xfce.sh
+	chmod +x xe303c12/xfce_install.sh
 	zip -r ./xe303c12.zip xe303c12/
 	mkdir -p release
-	mv ./*.deb /release/
+	if [ -n "${kernel_version}" ]; then
+		mv ./*.deb /release/
+	fi
 	mv ./xe303c12.zip /release/
+	echo "/"
 	ls -1 /
-	echo "Done"
+	echo "/release"
 	ls -1 /release
+	echo "Done!"
 )

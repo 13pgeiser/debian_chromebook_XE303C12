@@ -1,9 +1,10 @@
 # vim:set ft=dockerfile:
 # Debian base.
-FROM debian:buster
+FROM debian:bullseye-slim
 MAINTAINER Pascal Geiser <pgeiser@pgeiser.com>
 
-# Install base deps
+RUN echo 'deb-src http://deb.debian.org/debian bullseye main' >> /etc/apt/sources.list
+
 RUN set -ex \
     && apt-get update \
     && apt-get dist-upgrade -y \
@@ -34,25 +35,14 @@ RUN set -ex \
 	rsync \
 	python3 \
 	cpio \
+    && apt-get build-dep -y \
+	linux-source-5.10 \
+    && apt-get install -y \
+	linux-source-5.10 \
+	crossbuild-essential-armhf \
     && apt-get clean \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 
-RUN echo 'deb-src http://deb.debian.org/debian buster main' >> /etc/apt/sources.list
-RUN echo 'deb http://deb.debian.org/debian buster-backports main' >> /etc/apt/sources.list
-RUN echo 'deb-src http://deb.debian.org/debian buster-backports main' >> /etc/apt/sources.list
 
-RUN set -ex \
-    && apt-get update \
-    && apt-get install -y gcc-multilib \
-    && apt-get install -y linux-source-4.19 \
-    && apt-get -t buster-backports build-dep -y linux-source-5.10 \
-    && apt-get -t buster-backports install -y linux-source-5.10 \
-    && apt-get clean \
-    && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 
-RUN set -ex \
-    && apt-get update \
-    && apt-get install -y crossbuild-essential-armhf \
-    && apt-get clean \
-    && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 

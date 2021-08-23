@@ -3,7 +3,7 @@ Installing Debian on an ARM Chromebook (XE303C12)
 
 
 :date: 2018-02-25 14:00
-:modified: 2020-07-27 14:00
+:modified: 2021-08-26 16:30
 :tags: debian, arm, chromebook
 :authors: Pascal Geiser
 :summary: Debian installation on Samsung's ARM chromebook.
@@ -137,10 +137,8 @@ Known issues
 The final result is usable but far from production quality.
 
 1. Currently the machine does not like the reboot much. This leads to a back screen -> shutdown and restart each time.
-2. Sound card is not configured (and may not work).
-3. There is no graphic acceleration.
-4. Change the password!!! ;-)
-5. Plenty of other problems not described here.
+2. Change the password!!! ;-)
+3. Plenty of other problems not described here.
 
 Rebuilding locally
 ******************
@@ -150,8 +148,6 @@ The scripts have been prepared to work in docker. To rebuild:
  * Clone the repository: *git clone https://github.com/13pgeiser/debian_chromebook_XE303C12.git*
  * Jump in the folder: *cd debian_chromebook_XE303C12*
  * Call the docker build script: *./scripts/docker_build.sh* and wait a while depending on your machine...
-
-To rebuild with Debian bullseye: edit *./scripts/build.sh* and select a kernel option based on 5.4.
 
 Have fun!
 

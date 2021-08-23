@@ -98,7 +98,7 @@ function format_device() {
 		kernel="kernel_emmc_ext4.bin"
 	fi
 	echo "Formating ..."
-	mkfs.ext4 -F -O ^flex_bg -O ^metadata_csum -L rootfs "${drive}3"
+	mkfs.ext4 -F -L rootfs "${drive}3"
 	# mkfs.btrfs -O ^skinny-metadata -L rootfs ${drive}3
 	echo "Mounting ..."
 	mkdir -p /mnt/xe303c12
@@ -111,6 +111,8 @@ function format_device() {
 		cp rootfs.tar.xz /mnt/xe303c12/root/
 		cp ./*.sh /mnt/xe303c12/root/
 		cp ./*.bin /mnt/xe303c12/root/
+	else
+		cp ./xfce_install.sh /mnt/xe303c12/root/
 	fi
 	echo "Syncing"
 	sync
