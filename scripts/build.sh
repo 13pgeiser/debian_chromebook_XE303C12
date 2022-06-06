@@ -18,11 +18,13 @@ if [ "$kernel_option" == "debian_5.x" ]; then
 	kernel_version="$(make kernelversion)"
 
 elif [ "$kernel_option" == "rcn_5.x" ]; then
-	kernel_version=5.10.56
-	rcn_patch=https://rcn-ee.com/deb/sid-armhf/v5.10.56-armv7-x47/patch-5.10.56-armv7-x47.diff.gz
+	kernel_version=5.10.78
+	rcn_patch="https://rcn-ee.com/deb/sid-armhf/v5.10.78-armv7-x57/patch-5.10.78-armv7-x57.diff.gz"
+	kernel_version=5.10.109
+	rcn_patch="https://rcn-ee.com/deb/sid-armhf/v5.10.109-armv7-x63/patch-5.10.109-armv7-x63.diff.gz"
 	patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
 	for patch_to_apply in $patches; do
-		wget https://raw.githubusercontent.com/archlinuxarm/PKGBUILDs/master/core/linux-armv7/$patch_to_apply
+		wget -O "${patch_to_apply}" "https://aur.archlinux.org/cgit/aur.git/plain/${patch_to_apply}?h=linux-libre"
 	done
 	wget -nv $rcn_patch
 	rcn_patch=$(basename $rcn_patch)
