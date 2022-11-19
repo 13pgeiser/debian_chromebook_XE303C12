@@ -7,10 +7,8 @@ figlet "Release: $release"
 
 figlet "CPUs: $(nproc)"
 
-#
 kernel_option="debian_5.x"
 #kernel_option="rcn_5.x"
-#kernel_option="debian_5.x_official"
 
 if [ "$kernel_option" == "debian_5.x" ]; then
 	tar xJf /usr/src/linux-source-5.10.tar.xz
@@ -18,14 +16,8 @@ if [ "$kernel_option" == "debian_5.x" ]; then
 	kernel_version="$(make kernelversion)"
 
 elif [ "$kernel_option" == "rcn_5.x" ]; then
-	kernel_version=5.10.78
-	rcn_patch="https://rcn-ee.com/deb/sid-armhf/v5.10.78-armv7-x57/patch-5.10.78-armv7-x57.diff.gz"
-	kernel_version=5.10.109
-	rcn_patch="https://rcn-ee.com/deb/sid-armhf/v5.10.109-armv7-x63/patch-5.10.109-armv7-x63.diff.gz"
-	patches="0005-net-smsc95xx-Allow-mac-address-to-be-set-as-a-parame.patch"
-	for patch_to_apply in $patches; do
-		wget -O "${patch_to_apply}" "https://aur.archlinux.org/cgit/aur.git/plain/${patch_to_apply}?h=linux-libre"
-	done
+	kernel_version=5.10.131
+	rcn_patch="https://rcn-ee.com/deb/sid-armhf/v5.10.131-armv7-x65/patch-5.10.131-armv7-x65.diff.gz"
 	wget -nv $rcn_patch
 	rcn_patch=$(basename $rcn_patch)
 	gzip -d "$rcn_patch"
@@ -34,15 +26,9 @@ elif [ "$kernel_option" == "rcn_5.x" ]; then
 	(
 		cd linux-$kernel_version || exit
 		git apply "../${rcn_patch%.*}"
-		for patch_to_apply in $patches; do
-			patch -p1 --no-backup-if-mismatch <../$patch_to_apply
-		done
 	)
 	cd linux-$kernel_version
 	kernel_version="$(make kernelversion)"
-
-elif [ "$kernel_option" == "debian_5.x_official" ]; then
-	echo "Using debian kernel"
 else
 	echo "Unsupported kernel_option: $kernel_option"
 	exit 1
