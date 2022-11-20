@@ -12,8 +12,8 @@ Installing Debian on an ARM Chromebook (XE303C12)
 
 |ci-badge|
 
-.. |ci-badge| image:: https://dev.azure.com/pascalgeiser/debian_chromebook_XE303C12/_apis/build/status/13pgeiser.debian_chromebook_XE303C12?branchName=master
-              :target: https://dev.azure.com/pascalgeiser/debian_chromebook_XE303C12/_build/latest?definitionId=8&branchName=master
+.. |ci-badge| image:: https://github.com/13pgeiser/debian_chromebook_XE303C12/actions/workflows/publish.yml/badge.svg
+              :target: https://github.com/13pgeiser/debian_chromebook_XE303C12/actions/workflows/publish.yml/
 
 Work heavily based on Kali ARM scripts: https://gitlab.com/kalilinux/build-scripts/kali-arm
 
