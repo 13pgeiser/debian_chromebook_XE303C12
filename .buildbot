@@ -1,2 +1,2 @@
 bash ./scripts/docker_build.sh
-
+directory_upload release
