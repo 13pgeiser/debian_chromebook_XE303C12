@@ -118,7 +118,7 @@ Setup a network connection:
 
 Run the provided XFCE installation script::
 
-	./xfce.sh
+	./xfce_install.sh
 
 Wait for the installation to finish and `poweroff` before jumping in your prefered desktop (with power-on and ctrl-d).
 
