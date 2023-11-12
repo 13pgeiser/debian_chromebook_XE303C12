@@ -1,67 +1,51 @@
 #!/bin/bash
 # This script must run in a container with priviledges! (chroot, bin_fmt)
 set -e
+source /etc/os-release
 
-release="bullseye"
-figlet "Release: $release"
-
+figlet "Release: $VERSION_CODENAME"
 figlet "CPUs: $(nproc)"
 
-kernel_option="debian_5.x"
-#kernel_option="rcn_5.x"
-
-if [ "$kernel_option" == "debian_5.x" ]; then
+if [ "$VERSION_CODENAME" == "bullseye" ]; then
 	tar xJf /usr/src/linux-source-5.10.tar.xz
 	cd linux-source-5.10
-	kernel_version="$(make kernelversion)"
 
-elif [ "$kernel_option" == "rcn_5.x" ]; then
-	kernel_version=5.10.131
-	rcn_patch="https://rcn-ee.com/deb/sid-armhf/v5.10.131-armv7-x65/patch-5.10.131-armv7-x65.diff.gz"
-	wget -nv $rcn_patch
-	rcn_patch=$(basename $rcn_patch)
-	gzip -d "$rcn_patch"
-	wget -nv https://mirrors.edge.kernel.org/pub/linux/kernel/v5.x/linux-$kernel_version.tar.xz
-	tar xJf linux-$kernel_version.tar.xz
-	(
-		cd linux-$kernel_version || exit
-		git apply "../${rcn_patch%.*}"
-	)
-	cd linux-$kernel_version
-	kernel_version="$(make kernelversion)"
+elif [ "$VERSION_CODENAME" == "bookworm" ]; then
+	tar xJf /usr/src/linux-source-6.1.tar.xz
+	cd linux-source-6.1
 else
-	echo "Unsupported kernel_option: $kernel_option"
+	echo "Unsupported"
 	exit 1
 fi
 
-if [ -n "${kernel_version}" ]; then
-	export kernel_version
-	figlet "KERNEL: $kernel_version"
-	# shellcheck disable=SC2206
-	vers=(${kernel_version//./ })
-	version="${vers[0]}.${vers[1]}"
-	figlet "VERSION: $version"
+kernel_version="$(make kernelversion)"
 
-	# Get TI firmwares (not mandatory)...
-	mkdir -p firmware
-	wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am335x-bone-scale-data.bin?raw=true -O firmware/am335x-bone-scale-data.bin
-	wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am335x-evm-scale-data.bin?raw=true -O firmware/am335x-evm-scale-data.bin
-	wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am335x-pm-firmware.bin?raw=true -O firmware/am335x-pm-firmware.bin
-	wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am335x-pm-firmware.elf?raw=true -O firmware/am335x-pm-firmware.elf
-	wget https://github.com/beagleboard/linux/blob/"$version"/firmware/am43x-evm-scale-data.bin?raw=true -O firmware/am43x-evm-scale-data.bin
+export kernel_version
+figlet "KERNEL: $kernel_version"
+# shellcheck disable=SC2206
+vers=(${kernel_version//./ })
+version="${vers[0]}.${vers[1]}"
+figlet "VERSION: $version"
 
-	# Copy config, apply and build kernel
-	export ARCH=arm
-	export CROSS_COMPILE=arm-linux-gnueabihf-
-	cp /configs/"$version" ./.config
-	make olddefconfig
-	make bindeb-pkg "-j$(nproc)"
-	make dtbs
-	kver=$(make kernelrelease)
-	export kver
-	figlet "KVER: $kver"
-	cp ./arch/arm/boot/dts/exynos5250*.dtb /
-fi
+# Get TI firmwares
+mkdir -p firmware
+wget https://git.ti.com/cgit/processor-firmware/ti-amx3-cm3-pm-firmware/plain/bin/am335x-bone-scale-data.bin?h=ti-v4.1.y -O firmware/am335x-bone-scale-data.bin
+wget https://git.ti.com/cgit/processor-firmware/ti-amx3-cm3-pm-firmware/plain/bin/am335x-evm-scale-data.bin?h=ti-v4.1.y -O firmware/am335x-evm-scale-data.bin
+wget https://git.ti.com/cgit/processor-firmware/ti-amx3-cm3-pm-firmware/plain/bin/am335x-pm-firmware.bin?h=ti-v4.1.y -O firmware/am335x-pm-firmware.bin
+wget https://git.ti.com/cgit/processor-firmware/ti-amx3-cm3-pm-firmware/plain/bin/am335x-pm-firmware.elf?h=ti-v4.1.y -O firmware/am335x-pm-firmware.elf
+wget https://git.ti.com/cgit/processor-firmware/ti-amx3-cm3-pm-firmware/plain/bin/am43x-evm-scale-data.bin?h=ti-v4.1.y -O firmware/am43x-evm-scale-data.bin
+
+# Copy config, apply and build kernel
+export ARCH=arm
+export CROSS_COMPILE=arm-linux-gnueabihf-
+cp /configs/"$version" ./.config
+make olddefconfig
+make bindeb-pkg "-j$(nproc)"
+make dtbs
+kver=$(make kernelrelease)
+export kver
+figlet "KVER: $kver"
+cp ./arch/arm/boot/dts/exynos5250*.dtb /
 
 cd /
 
@@ -70,14 +54,32 @@ mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
 update-binfmts --enable qemu-arm
 
 # Extract debian!
-debootstrap --arch=armhf $release debian_root http://httpredir.debian.org/debian
+debootstrap --arch=armhf $VERSION_CODENAME debian_root http://httpredir.debian.org/debian
 
-# Update Apt sources for bullseye
+# Update Apt sources
+if [ "$VERSION_CODENAME" == "bullseye" ]; then
 cat <<EOF >debian_root/etc/apt/sources.list
-deb http://httpredir.debian.org/debian $release main non-free contrib
-deb-src http://httpredir.debian.org/debian $release main non-free contrib
-deb https://security.debian.org/debian-security bullseye-security main contrib non-free
+deb http://httpredir.debian.org/debian bullseye main contrib non-free
+deb-src http://httpredir.debian.org/debian bullseye  main contrib non-free
+
+deb http://security.debian.org/debian-security bullseye-security  main contrib non-free
+deb-src http://security.debian.org/debian-security bullseye-security  main contrib non-free
 EOF
+elif [ "$VERSION_CODENAME" == "bookworm" ]; then
+cat <<EOF >debian_root/etc/apt/sources.list
+deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
+deb-src http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
+
+deb http://deb.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
+deb-src http://deb.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
+
+deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
+deb-src http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
+EOF
+else
+	echo "Unsupported"
+	exit 1
+fi
 
 # Change hostname
 echo "chromebook" >debian_root/etc/hostname
@@ -143,6 +145,7 @@ run_in_chroot() {
 cat <<"EOF" >debian_root/root/third-stage
 #!/bin/bash
 set -ex
+source /etc/os-release
 apt-get update
 echo "root:toor" | chpasswd
 export DEBIAN_FRONTEND=noninteractive
@@ -151,9 +154,20 @@ apt-get -y --no-install-recommends install \
 	initramfs-tools parted sudo xz-utils wpasupplicant  \
 	locales-all ca-certificates initramfs-tools u-boot-tools locales \
 	console-common less network-manager git laptop-mode-tools \
-	alsa-utils pulseaudio python3 task-ssh-server \
-	firmware-realtek firmware-linux firmware-libertas firmware-samsung
+	alsa-utils pulseaudio python3 task-ssh-server wget
 apt-get -y dist-upgrade
+if [ "$VERSION_CODENAME" == "bullseye" ]; then
+	apt-get -y --no-install-recommends install firmware-realtek firmware-linux firmware-libertas firmware-samsung
+fi
+if [ "$VERSION_CODENAME" == "bookworm" ]; then
+	cat /etc/apt/sources.list
+	apt-get -y --no-install-recommends install firmware-linux-nonfree firmware-linux-free firmware-realtek firmware-libertas firmware-samsung
+	# Downgrade cgpt (workaround bug
+	# https://github.com/hexdump0815/imagebuilder/blob/main/doc/important-information.md#23-09-25-cgpt-seems-to-be-broken-on-32bit-armv7l-systems-in-debian-bookworm
+	wget http://ftp.debian.org/debian/pool/main/v/vboot-utils/cgpt_0~R88-13597.B-1_armhf.deb
+	dpkg -i cgpt_0~R88-13597.B-1_armhf.deb
+	rm -f cgpt_0~R88-13597.B-1_armhf.deb
+fi
 apt-get -y autoremove
 apt-get clean
 # Enable ssh key regeneration
@@ -289,9 +303,9 @@ cd dts
 if [ -n "${kernel_version}" ]; then
 	cp /*.dtb .
 else
-	wget http://ftp.debian.org/debian/dists/bullseye/main/installer-armhf/current/images/device-tree/exynos5250-snow-rev5.dtb
-	wget http://ftp.debian.org/debian/dists/bullseye/main/installer-armhf/current/images/device-tree/exynos5250-snow.dtb
-	wget http://ftp.debian.org/debian/dists/bullseye/main/installer-armhf/current/images/device-tree/exynos5250-spring.dtb
+	wget http://ftp.debian.org/debian/dists/$VERSION_CODENAME/main/installer-armhf/current/images/device-tree/exynos5250-snow-rev5.dtb
+	wget http://ftp.debian.org/debian/dists/$VERSION_CODENAME/main/installer-armhf/current/images/device-tree/exynos5250-snow.dtb
+	wget http://ftp.debian.org/debian/dists/$VERSION_CODENAME/main/installer-armhf/current/images/device-tree/exynos5250-spring.dtb
 fi
 cd .. # dts
 

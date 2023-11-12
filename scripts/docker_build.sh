@@ -1,5 +1,19 @@
 #!/bin/bash
 set -e
+if [ $# -eq 0 ]; then
+	distrib="bullseye"
+elif [ $# -eq 1 ]; then
+	if [ "$1" != "bullseye" ] && [ "$1" != "bookworm" ]; then
+		echo "Only bullseye or bookworm are supported."
+		exit 1
+	fi
+	distrib="$1"
+else
+	echo "Invalid number of args"
+	exit 1
+fi
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+cp "$SCRIPT_DIR/Dockerfile.$distrib" "$SCRIPT_DIR/Dockerfile"
 docker rm -f xe303c12 || true
 docker system prune -f -a
 docker build -t xe303c12 scripts/
