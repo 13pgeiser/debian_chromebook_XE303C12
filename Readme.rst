@@ -3,7 +3,7 @@ Installing Debian on an ARM Chromebook (XE303C12)
 
 
 :date: 2018-02-25 14:00
-:modified: 2021-08-26 16:30
+:modified: 2023-11-17 10:00
 :tags: debian, arm, chromebook
 :authors: Pascal Geiser
 :summary: Debian installation on Samsung's ARM chromebook.
@@ -61,16 +61,16 @@ Once developer mode is enabled, it's possible to enable USB boot:
 
 * Boot the machine (pressing CTRL-D right after power-on).
 * Once chrome is ready, press CTRL-F2
-* Log as chronos with no password.
+* Log as `chronos` with no password.
 * su - # Should give you root access.
 * Enable usb boot with: crossystem dev_boot_usb=1 dev_boot_signed_only=0
 
 For more, look here:
- * Chrome documentation: https://chromium.googlesource.com/chromiumos/docs/+/master/developer_mode.md
+ * Chrome documentation: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_mode.md
  * ArchArm linux: https://archlinuxarm.org/platforms/armv7/samsung/samsung-chromebook
 
-USB stick preparation
-*********************
+USB stick preparation (on a Linux host)
+***************************************
 
 - Download the latest zip archive from the [releases page](https://github.com/13pgeiser/debian_chromebook_XE303C12/releases) and unpack it.
 - Open a terminal in the extracted folder
@@ -84,8 +84,8 @@ USB stick preparation
 Boot on USB stick
 *****************
 
-Once the USB key is ready, plug it in the black usb connector (ie USB 2.0) of
-the chromebook . Start it and press ctrl-u (assuming you've already configured the
+Once the USB key is ready, plug it in the **black** usb connector (ie USB 2.0) of
+the chromebook . Start the machine and press ctrl-u (assuming you've already configured the
 developer mode). Wait for the system to boot.
 
 user: root

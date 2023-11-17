@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 if [ $# -eq 0 ]; then
-	distrib="bullseye"
+	distrib="bookworm"
 elif [ $# -eq 1 ]; then
 	if [ "$1" != "bullseye" ] && [ "$1" != "bookworm" ]; then
 		echo "Only bullseye or bookworm are supported."
