@@ -47,7 +47,7 @@ function scan_devices() {
 	for item in ${!names[*]}; do
 		if [ "${transports[$item]}" == "usb" ] && [ "${hotplugs[$item]}" -ne 0 ]; then
 			printf "%d: Path=%s\\tModel=%s\\tVendor=%s\\tTransport=%s\\tHotplug=%d\\n" "$count" "${names[$item]}" "${models[$item]}" "${vendors[$item]}" "${transports[$item]}" "${hotplugs[$item]}"
-			devices[$count]="${names[$item]}"
+			devices[count]="${names[$item]}"
 			count=$((count + 1))
 		fi
 	done

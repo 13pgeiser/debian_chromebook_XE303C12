@@ -147,7 +147,7 @@ The scripts have been prepared to work in docker. To rebuild:
  * Install docker for your distro
  * Clone the repository: *git clone https://github.com/13pgeiser/debian_chromebook_XE303C12.git*
  * Jump in the folder: *cd debian_chromebook_XE303C12*
- * Call the docker build script: *./scripts/docker_build.sh* and wait a while depending on your machine...
+ * Call make: *make* and wait a while depending on your machine...
 
 Have fun!
 

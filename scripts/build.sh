@@ -1,6 +1,7 @@
 #!/bin/bash
 # This script must run in a container with priviledges! (chroot, bin_fmt)
 set -e
+# shellcheck disable=SC1091
 source /etc/os-release
 
 figlet "Release: $VERSION_CODENAME"
@@ -54,11 +55,11 @@ mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
 update-binfmts --enable qemu-arm
 
 # Extract debian!
-debootstrap --arch=armhf $VERSION_CODENAME debian_root http://httpredir.debian.org/debian
+debootstrap --arch=armhf "$VERSION_CODENAME" debian_root http://httpredir.debian.org/debian
 
 # Update Apt sources
 if [ "$VERSION_CODENAME" == "bullseye" ]; then
-cat <<EOF >debian_root/etc/apt/sources.list
+	cat <<EOF >debian_root/etc/apt/sources.list
 deb http://httpredir.debian.org/debian bullseye main contrib non-free
 deb-src http://httpredir.debian.org/debian bullseye  main contrib non-free
 
@@ -66,7 +67,7 @@ deb http://security.debian.org/debian-security bullseye-security  main contrib n
 deb-src http://security.debian.org/debian-security bullseye-security  main contrib non-free
 EOF
 elif [ "$VERSION_CODENAME" == "bookworm" ]; then
-cat <<EOF >debian_root/etc/apt/sources.list
+	cat <<EOF >debian_root/etc/apt/sources.list
 deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
 deb-src http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
 
@@ -303,9 +304,9 @@ cd dts
 if [ -n "${kernel_version}" ]; then
 	cp /*.dtb .
 else
-	wget http://ftp.debian.org/debian/dists/$VERSION_CODENAME/main/installer-armhf/current/images/device-tree/exynos5250-snow-rev5.dtb
-	wget http://ftp.debian.org/debian/dists/$VERSION_CODENAME/main/installer-armhf/current/images/device-tree/exynos5250-snow.dtb
-	wget http://ftp.debian.org/debian/dists/$VERSION_CODENAME/main/installer-armhf/current/images/device-tree/exynos5250-spring.dtb
+	wget "http://ftp.debian.org/debian/dists/$VERSION_CODENAME/main/installer-armhf/current/images/device-tree/exynos5250-snow-rev5.dtb"
+	wget "http://ftp.debian.org/debian/dists/$VERSION_CODENAME/main/installer-armhf/current/images/device-tree/exynos5250-snow.dtb"
+	wget "http://ftp.debian.org/debian/dists/$VERSION_CODENAME/main/installer-armhf/current/images/device-tree/exynos5250-spring.dtb"
 fi
 cd .. # dts
 
