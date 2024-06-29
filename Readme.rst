@@ -60,7 +60,7 @@ and let U run any firmware on the machine with the drawback of having at each st
 Once developer mode is enabled, it's possible to enable USB boot:
 
 * Boot the machine (pressing CTRL-D right after power-on).
-* Once chrome is ready, press CTRL-F2
+* Once chrome is ready, press CTRL-Alt-F2
 * Log as `chronos` with no password.
 * su - # Should give you root access.
 * Enable usb boot with: crossystem dev_boot_usb=1 dev_boot_signed_only=0
