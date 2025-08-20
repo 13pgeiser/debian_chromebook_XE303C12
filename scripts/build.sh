@@ -332,7 +332,13 @@ tar pcJf ../rootfs.tar.xz ./*
 	cp /kernel_usb.bin xe303c12/kernel_usb.bin
 	mv /kernel_emmc_ext4.bin xe303c12/kernel_emmc_ext4.bin
 	mv rootfs.tar.xz xe303c12/rootfs.tar.xz
-	cp ../scripts/install.sh xe303c12/install.sh
+	if [ "$VERSION_CODENAME" == "bullseye" ]; then
+		# usrmerge has not moved the kernel modules to /usr/lib/modules yet
+        sed -Ee 's`(\s/?)usr/lib([\s/])`\1lib\2`' ../scripts/install.sh > xe303c12/install.sh
+		chmod +x xe303c12/install.sh
+	else
+		cp ../scripts/install.sh xe303c12/install.sh
+	fi
 	cat <<'EOF' >xe303c12/xfce_install.sh
 #!/bin/bash
 # Install packages
