@@ -137,7 +137,7 @@ else
 		if [ "$sure" != "yes" ]; then
 			stop "Stopped by the user"
 		fi
-		tar xJf rootfs.tar.xz -C / usr/lib/modules/
+		tar xJf rootfs.tar.xz -C / ./usr/lib/modules/
 		dd if=kernel_emmc_ext4.bin of=/dev/mmcblk0p1
 	else
 		check_tool cgpt
