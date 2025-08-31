@@ -14,6 +14,9 @@ if [ "$VERSION_CODENAME" == "bullseye" ]; then
 elif [ "$VERSION_CODENAME" == "bookworm" ]; then
 	tar xJf /usr/src/linux-source-6.1.tar.xz
 	cd linux-source-6.1
+elif [ "$VERSION_CODENAME" == "trixie" ]; then
+	tar xJf /usr/src/linux-source-6.12.tar.xz
+	cd linux-source-6.12
 else
 	echo "Unsupported"
 	exit 1
@@ -46,12 +49,20 @@ make dtbs
 kver=$(make kernelrelease)
 export kver
 figlet "KVER: $kver"
-cp ./arch/arm/boot/dts/exynos5250*.dtb /
-
+if [ "$VERSION_CODENAME" == "trixie" ]; then
+	cp ./arch/arm/boot/dts/samsung/exynos5250*.dtb /
+else
+	cp ./arch/arm/boot/dts/exynos5250*.dtb /
+fi
 cd /
 
 # Make sure qemu-arm can execute transparently ARM binaries.
 mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
+if [ -e /usr/lib/binfmt.d/qemu-arm.conf ]; then
+	if [ ! -e /proc/sys/fs/binfmt_misc/qemu-arm ]; then
+		cat /usr/lib/binfmt.d/qemu-arm.conf >/proc/sys/fs/binfmt_misc/register
+	fi
+fi
 update-binfmts --enable qemu-arm
 
 # Extract debian!
@@ -76,6 +87,14 @@ deb-src http://deb.debian.org/debian-security bookworm-security main contrib non
 
 deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
 deb-src http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
+EOF
+elif [ "$VERSION_CODENAME" == "trixie" ]; then
+	cat <<EOF >debian_root/etc/apt/sources.list
+deb http://deb.debian.org/debian trixie main contrib non-free non-free-firmware
+deb-src http://deb.debian.org/debian trixie main contrib non-free non-free-firmware
+
+deb http://deb.debian.org/debian-security trixie-security main contrib non-free non-free-firmware
+deb-src http://deb.debian.org/debian-security trixie-security main contrib non-free non-free-firmware
 EOF
 else
 	echo "Unsupported"
@@ -155,7 +174,7 @@ apt-get -y --no-install-recommends install \
 	initramfs-tools parted sudo xz-utils wpasupplicant  \
 	locales-all ca-certificates initramfs-tools u-boot-tools locales \
 	console-common less network-manager git laptop-mode-tools \
-	alsa-utils pulseaudio python3 task-ssh-server wget
+	alsa-utils pulseaudio python3 task-ssh-server wget zstd
 apt-get -y dist-upgrade
 if [ "$VERSION_CODENAME" == "bullseye" ]; then
 	apt-get -y --no-install-recommends install firmware-realtek firmware-linux firmware-libertas firmware-samsung
@@ -168,6 +187,10 @@ if [ "$VERSION_CODENAME" == "bookworm" ]; then
 	wget http://ftp.debian.org/debian/pool/main/v/vboot-utils/cgpt_0~R88-13597.B-1_armhf.deb
 	dpkg -i cgpt_0~R88-13597.B-1_armhf.deb
 	rm -f cgpt_0~R88-13597.B-1_armhf.deb
+fi
+if [ "$VERSION_CODENAME" == "trixie" ]; then
+	cat /etc/apt/sources.list
+	apt-get -y --no-install-recommends install firmware-linux-nonfree firmware-linux-free firmware-realtek firmware-libertas firmware-samsung
 fi
 apt-get -y autoremove
 apt-get clean
@@ -334,7 +357,8 @@ tar pcJf ../rootfs.tar.xz ./*
 	mv rootfs.tar.xz xe303c12/rootfs.tar.xz
 	if [ "$VERSION_CODENAME" == "bullseye" ]; then
 		# usrmerge has not moved the kernel modules to /usr/lib/modules yet
-        sed -Ee 's`(\s/?)usr/lib([\s/])`\1lib\2`' ../scripts/install.sh > xe303c12/install.sh
+		# shellcheck disable=SC2016
+		sed -Ee 's`(\s/?)usr/lib([\s/])`\1lib\2`' ../scripts/install.sh >xe303c12/install.sh
 		chmod +x xe303c12/install.sh
 	else
 		cp ../scripts/install.sh xe303c12/install.sh

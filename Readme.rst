@@ -17,9 +17,9 @@ Installing Debian on an ARM Chromebook (XE303C12)
 
 Work heavily based on Kali ARM scripts: https://gitlab.com/kalilinux/build-scripts/kali-arm
 
-Kernel config taken from: https://github.com/archlinuxarm/PKGBUILDs/tree/master/core/linux-armv7
+Kernel config taken partially from: https://github.com/archlinuxarm/PKGBUILDs/tree/master/core/linux-armv7
 
-I still use the machine as a remote desktop client and I do it rarely. Do not expect much support if it does fit work you!
+I use the machine rarely. Do not expect much support if it does not fit your needs.
 
 **Use at your own risk!**
 
@@ -148,6 +148,9 @@ The scripts have been prepared to work in docker. To rebuild:
  * Clone the repository: *git clone https://github.com/13pgeiser/debian_chromebook_XE303C12.git*
  * Jump in the folder: *cd debian_chromebook_XE303C12*
  * Call make: *make* and wait a while depending on your machine...
+
+alternatively, instead of calling *make*, you can call *./scripts/docker_build.sh trixie* or
+*./scripts/docker_build.sh bookworm* to force a particular release of debian.
 
 Have fun!
 
