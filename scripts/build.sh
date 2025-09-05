@@ -174,7 +174,8 @@ apt-get -y --no-install-recommends install \
 	initramfs-tools parted sudo xz-utils wpasupplicant  \
 	locales-all ca-certificates initramfs-tools u-boot-tools locales \
 	console-common less network-manager git laptop-mode-tools \
-	alsa-utils pulseaudio python3 task-ssh-server wget zstd
+	alsa-utils pulseaudio python3 task-ssh-server wget zstd \
+	blueman systemd-timesyncd
 apt-get -y dist-upgrade
 if [ "$VERSION_CODENAME" == "bullseye" ]; then
 	apt-get -y --no-install-recommends install firmware-realtek firmware-linux firmware-libertas firmware-samsung
