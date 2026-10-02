@@ -1,19 +1,11 @@
 #!/bin/bash
 set -e
-if [ $# -eq 0 ]; then
-	distrib="trixie"
-elif [ $# -eq 1 ]; then
-	if [ "$1" != "bullseye" ] && [ "$1" != "bookworm" ] && [ "$1" != "trixie" ]; then
-		echo "Only bullseye, bookworm or trixie are supported."
-		exit 1
-	fi
-	distrib="$1"
-else
+if [ $# -ne 0 ]; then
 	echo "Invalid number of args"
 	exit 1
 fi
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-cp "$SCRIPT_DIR/Dockerfile.$distrib" "$SCRIPT_DIR/Dockerfile"
+cp "$SCRIPT_DIR/Dockerfile.trixie" "$SCRIPT_DIR/Dockerfile"
 docker rm -f xe303c12 || true
 docker system prune -f -a
 docker build -t xe303c12 scripts/

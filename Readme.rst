@@ -3,7 +3,7 @@ Installing Debian on an ARM Chromebook (XE303C12)
 
 
 :date: 2018-02-25 14:00
-:modified: 2023-11-17 10:00
+:modified: 2026-10-02 12:00
 :tags: debian, arm, chromebook
 :authors: Pascal Geiser
 :summary: Debian installation on Samsung's ARM chromebook.
@@ -149,8 +149,7 @@ The scripts have been prepared to work in docker. To rebuild:
  * Jump in the folder: *cd debian_chromebook_XE303C12*
  * Call make: *make* and wait a while depending on your machine...
 
-alternatively, instead of calling *make*, you can call *./scripts/docker_build.sh trixie* or
-*./scripts/docker_build.sh bookworm* to force a particular release of debian.
+The build produces a Debian trixie (kernel 6.12) image.
 
 Have fun!
 

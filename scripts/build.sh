@@ -7,20 +7,12 @@ source /etc/os-release
 figlet "Release: $VERSION_CODENAME"
 figlet "CPUs: $(nproc)"
 
-if [ "$VERSION_CODENAME" == "bullseye" ]; then
-	tar xJf /usr/src/linux-source-5.10.tar.xz
-	cd linux-source-5.10
-
-elif [ "$VERSION_CODENAME" == "bookworm" ]; then
-	tar xJf /usr/src/linux-source-6.1.tar.xz
-	cd linux-source-6.1
-elif [ "$VERSION_CODENAME" == "trixie" ]; then
-	tar xJf /usr/src/linux-source-6.12.tar.xz
-	cd linux-source-6.12
-else
+if [ "$VERSION_CODENAME" != "trixie" ]; then
 	echo "Unsupported"
 	exit 1
 fi
+tar xJf /usr/src/linux-source-6.12.tar.xz
+cd linux-source-6.12
 
 kernel_version="$(make kernelversion)"
 
@@ -30,14 +22,6 @@ figlet "KERNEL: $kernel_version"
 vers=(${kernel_version//./ })
 version="${vers[0]}.${vers[1]}"
 figlet "VERSION: $version"
-
-# Get TI firmwares
-mkdir -p firmware
-wget https://git.ti.com/cgit/processor-firmware/ti-amx3-cm3-pm-firmware/plain/bin/am335x-bone-scale-data.bin?h=ti-v4.1.y -O firmware/am335x-bone-scale-data.bin
-wget https://git.ti.com/cgit/processor-firmware/ti-amx3-cm3-pm-firmware/plain/bin/am335x-evm-scale-data.bin?h=ti-v4.1.y -O firmware/am335x-evm-scale-data.bin
-wget https://git.ti.com/cgit/processor-firmware/ti-amx3-cm3-pm-firmware/plain/bin/am335x-pm-firmware.bin?h=ti-v4.1.y -O firmware/am335x-pm-firmware.bin
-wget https://git.ti.com/cgit/processor-firmware/ti-amx3-cm3-pm-firmware/plain/bin/am335x-pm-firmware.elf?h=ti-v4.1.y -O firmware/am335x-pm-firmware.elf
-wget https://git.ti.com/cgit/processor-firmware/ti-amx3-cm3-pm-firmware/plain/bin/am43x-evm-scale-data.bin?h=ti-v4.1.y -O firmware/am43x-evm-scale-data.bin
 
 # Copy config, apply and build kernel
 export ARCH=arm
@@ -49,11 +33,7 @@ make dtbs
 kver=$(make kernelrelease)
 export kver
 figlet "KVER: $kver"
-if [ "$VERSION_CODENAME" == "trixie" ]; then
-	cp ./arch/arm/boot/dts/samsung/exynos5250*.dtb /
-else
-	cp ./arch/arm/boot/dts/exynos5250*.dtb /
-fi
+cp ./arch/arm/boot/dts/samsung/exynos5250*.dtb /
 cd /
 
 # Make sure qemu-arm can execute transparently ARM binaries.
@@ -69,37 +49,13 @@ update-binfmts --enable qemu-arm
 debootstrap --arch=armhf "$VERSION_CODENAME" debian_root http://httpredir.debian.org/debian
 
 # Update Apt sources
-if [ "$VERSION_CODENAME" == "bullseye" ]; then
-	cat <<EOF >debian_root/etc/apt/sources.list
-deb http://httpredir.debian.org/debian bullseye main contrib non-free
-deb-src http://httpredir.debian.org/debian bullseye  main contrib non-free
-
-deb http://security.debian.org/debian-security bullseye-security  main contrib non-free
-deb-src http://security.debian.org/debian-security bullseye-security  main contrib non-free
-EOF
-elif [ "$VERSION_CODENAME" == "bookworm" ]; then
-	cat <<EOF >debian_root/etc/apt/sources.list
-deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
-deb-src http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
-
-deb http://deb.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
-deb-src http://deb.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
-
-deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
-deb-src http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
-EOF
-elif [ "$VERSION_CODENAME" == "trixie" ]; then
-	cat <<EOF >debian_root/etc/apt/sources.list
+cat <<EOF >debian_root/etc/apt/sources.list
 deb http://deb.debian.org/debian trixie main contrib non-free non-free-firmware
 deb-src http://deb.debian.org/debian trixie main contrib non-free non-free-firmware
 
 deb http://deb.debian.org/debian-security trixie-security main contrib non-free non-free-firmware
 deb-src http://deb.debian.org/debian-security trixie-security main contrib non-free non-free-firmware
 EOF
-else
-	echo "Unsupported"
-	exit 1
-fi
 
 # Change hostname
 echo "chromebook" >debian_root/etc/hostname
@@ -177,22 +133,8 @@ apt-get -y --no-install-recommends install \
 	alsa-utils pulseaudio python3 task-ssh-server wget zstd \
 	blueman systemd-timesyncd
 apt-get -y dist-upgrade
-if [ "$VERSION_CODENAME" == "bullseye" ]; then
-	apt-get -y --no-install-recommends install firmware-realtek firmware-linux firmware-libertas firmware-samsung
-fi
-if [ "$VERSION_CODENAME" == "bookworm" ]; then
-	cat /etc/apt/sources.list
-	apt-get -y --no-install-recommends install firmware-linux-nonfree firmware-linux-free firmware-realtek firmware-libertas firmware-samsung
-	# Downgrade cgpt (workaround bug
-	# https://github.com/hexdump0815/imagebuilder/blob/main/doc/important-information.md#23-09-25-cgpt-seems-to-be-broken-on-32bit-armv7l-systems-in-debian-bookworm
-	wget http://ftp.debian.org/debian/pool/main/v/vboot-utils/cgpt_0~R88-13597.B-1_armhf.deb
-	dpkg -i cgpt_0~R88-13597.B-1_armhf.deb
-	rm -f cgpt_0~R88-13597.B-1_armhf.deb
-fi
-if [ "$VERSION_CODENAME" == "trixie" ]; then
-	cat /etc/apt/sources.list
-	apt-get -y --no-install-recommends install firmware-linux-nonfree firmware-linux-free firmware-realtek firmware-libertas firmware-samsung
-fi
+cat /etc/apt/sources.list
+apt-get -y --no-install-recommends install firmware-linux-nonfree firmware-linux-free firmware-realtek firmware-libertas firmware-samsung
 apt-get -y autoremove
 apt-get clean
 # Enable ssh key regeneration
@@ -356,14 +298,7 @@ tar pcJf ../rootfs.tar.xz ./*
 	cp /kernel_usb.bin xe303c12/kernel_usb.bin
 	mv /kernel_emmc_ext4.bin xe303c12/kernel_emmc_ext4.bin
 	mv rootfs.tar.xz xe303c12/rootfs.tar.xz
-	if [ "$VERSION_CODENAME" == "bullseye" ]; then
-		# usrmerge has not moved the kernel modules to /usr/lib/modules yet
-		# shellcheck disable=SC2016
-		sed -Ee 's`(\s/?)usr/lib([\s/])`\1lib\2`' ../scripts/install.sh >xe303c12/install.sh
-		chmod +x xe303c12/install.sh
-	else
-		cp ../scripts/install.sh xe303c12/install.sh
-	fi
+	cp ../scripts/install.sh xe303c12/install.sh
 	cat <<'EOF' >xe303c12/xfce_install.sh
 #!/bin/bash
 # Install packages
